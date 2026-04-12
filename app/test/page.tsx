@@ -1,7 +1,7 @@
 "use client";
 
-import { getGPXMetadata } from "@/lib/parse-gpx";
-import type { GPXMetadataSummary } from "@/lib/parse-gpx";
+import { getGPXMetadata } from "@/lib/gpx-parser";
+import type { GPXMetadataSummary } from "@/types/hike-upload";
 import { useState } from "react";
 
 export default function TestPage() {
