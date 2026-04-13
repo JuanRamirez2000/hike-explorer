@@ -41,7 +41,27 @@ export const hikes = pgTable(
     date: date("date"),
     // [minLng, minLat, maxLng, maxLat] — real(4) matches float4[] in Postgres
     bbox: real("bbox").array(4),
-    stats: jsonb("stats"),
+
+    // ── user-editable metadata ──────────────────────────────────────────────
+    // device or app that recorded the GPX (e.g. "Garmin Connect", "Strava")
+    creator: text("creator"),
+
+    // ── computed stats from track points ───────────────────────────────────
+    // great-circle sum of consecutive track points
+    distance_km: doublePrecision("distance_km"),
+    // sum of positive elevation deltas
+    elevation_gain_m: doublePrecision("elevation_gain_m"),
+    // seconds between first and last timestamped track point
+    duration_seconds: doublePrecision("duration_seconds"),
+    // wall-clock time of the first / last timestamped track point
+    start_time: timestamp("start_time", { withTimezone: true }),
+    end_time: timestamp("end_time", { withTimezone: true }),
+
+    // ── catch-all for future unstructured metadata ──────────────────────────
+    // e.g. historical weather, user notes, terrain tags
+    extra: jsonb("extra"),
+
+    // ── fog-of-war ──────────────────────────────────────────────────────────
     fog_status: fogStatusEnum("fog_status").default("pending"),
     fog_geojson: jsonb("fog_geojson"),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),

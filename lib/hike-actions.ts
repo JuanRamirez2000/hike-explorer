@@ -12,6 +12,8 @@ export async function saveHike(
     return { success: false, error: "GPX file contains no track points" };
   }
 
+  const { stats } = payload;
+
   const [hike] = await db
     .insert(hikes)
     .values({
@@ -19,6 +21,12 @@ export async function saveHike(
       name: payload.name,
       date: payload.date ?? undefined,
       bbox: payload.bbox ?? undefined,
+      creator: stats.creator || undefined,
+      distance_km: stats.distanceKm ?? undefined,
+      elevation_gain_m: stats.elevationGainM ?? undefined,
+      duration_seconds: stats.durationSeconds ?? undefined,
+      start_time: stats.startTime ? new Date(stats.startTime) : undefined,
+      end_time: stats.endTime ? new Date(stats.endTime) : undefined,
     })
     .returning({ id: hikes.id });
 

@@ -2,6 +2,7 @@ import { XMLParser } from "fast-xml-parser";
 import type { GPXJson, GPXPoint } from "@/types/gpx";
 import type {
   GPXMetadataSummary,
+  HikeStats,
   ParsedHikePayload,
   ParsedTrackPoint,
 } from "@/types/hike-upload";
@@ -48,6 +49,71 @@ function computeBbox(
   return [minLng, minLat, maxLng, maxLat];
 }
 
+function computeElevationGainM(points: GPXPoint[]): number | null {
+  const withEle = points.filter((p) => p.ele !== undefined);
+  if (withEle.length < 2) return null;
+
+  let gain = 0;
+  for (let i = 1; i < withEle.length; i++) {
+    const delta = withEle[i].ele! - withEle[i - 1].ele!;
+    if (delta > 0) gain += delta;
+  }
+  return gain;
+}
+
+function haversineKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function computeDistanceKm(points: GPXPoint[]): number | null {
+  if (points.length < 2) return null;
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    total += haversineKm(
+      points[i - 1]["@_lat"],
+      points[i - 1]["@_lon"],
+      points[i]["@_lat"],
+      points[i]["@_lon"],
+    );
+  }
+  return total;
+}
+
+function computeDurationSeconds(points: GPXPoint[]): number | null {
+  const withTime = points.filter((p) => p.time !== undefined);
+  if (withTime.length < 2) return null;
+  const start = new Date(withTime[0].time!).getTime();
+  const end = new Date(withTime[withTime.length - 1].time!).getTime();
+  const diff = (end - start) / 1000;
+  return diff > 0 ? diff : null;
+}
+
+function computeStats(points: GPXPoint[], creator: string): HikeStats {
+  const withTime = points.filter((p) => p.time !== undefined);
+  return {
+    creator,
+    elevationGainM: computeElevationGainM(points),
+    distanceKm: computeDistanceKm(points),
+    durationSeconds: computeDurationSeconds(points),
+    startTime: withTime.length > 0 ? withTime[0].time! : null,
+    endTime:
+      withTime.length > 1 ? withTime[withTime.length - 1].time! : null,
+  };
+}
+
 export async function getGPXMetadata(file: File): Promise<GPXMetadataSummary> {
   const text = await file.text();
   const gpxJson = parseGPXXml(text);
@@ -62,13 +128,21 @@ export async function getGPXMetadata(file: File): Promise<GPXMetadataSummary> {
   const rawDate = gpx.metadata?.time ?? points[0]?.time;
   const date = rawDate ? new Date(rawDate).toISOString().split("T")[0] : null;
 
+  const creator = gpx["@_creator"] ?? "Unknown";
+  const stats = computeStats(points, creator);
+
   return {
     name,
     date,
-    creator: gpx["@_creator"] ?? "Unknown",
+    creator,
     trackCount: gpx.trk?.length ?? 0,
     totalPoints: points.length,
     bbox: computeBbox(points),
+    elevationGainM: stats.elevationGainM,
+    distanceKm: stats.distanceKm,
+    durationSeconds: stats.durationSeconds,
+    startTime: stats.startTime,
+    endTime: stats.endTime,
   };
 }
 
@@ -86,6 +160,8 @@ export async function buildHikePayload(file: File): Promise<ParsedHikePayload> {
   const rawDate = gpx.metadata?.time ?? points[0]?.time;
   const date = rawDate ? new Date(rawDate).toISOString().split("T")[0] : null;
 
+  const creator = gpx["@_creator"] ?? "Unknown";
+
   const trackPoints: ParsedTrackPoint[] = points.map((pt) => ({
     lat: pt["@_lat"],
     lng: pt["@_lon"],
@@ -98,5 +174,6 @@ export async function buildHikePayload(file: File): Promise<ParsedHikePayload> {
     date,
     bbox: computeBbox(points),
     trackPoints,
+    stats: computeStats(points, creator),
   };
 }

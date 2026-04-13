@@ -5,6 +5,11 @@ export interface GPXMetadataSummary {
   trackCount: number;
   totalPoints: number;
   bbox: [number, number, number, number] | null;
+  elevationGainM: number | null;
+  distanceKm: number | null;
+  durationSeconds: number | null;
+  startTime: string | null;
+  endTime: string | null;
 }
 
 export interface ParsedTrackPoint {
@@ -14,11 +19,21 @@ export interface ParsedTrackPoint {
   timestamp: string | null;
 }
 
+export interface HikeStats {
+  creator: string;
+  elevationGainM: number | null;
+  distanceKm: number | null;
+  durationSeconds: number | null;
+  startTime: string | null;
+  endTime: string | null;
+}
+
 export interface ParsedHikePayload {
   name: string;
   date: string | null;
   bbox: [number, number, number, number] | null;
   trackPoints: ParsedTrackPoint[];
+  stats: HikeStats;
 }
 
 export type UploadResult =
