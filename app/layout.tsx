@@ -36,32 +36,52 @@ export default async function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-theme="pastel"
     >
       <body className="min-h-full flex flex-col">
-        <nav className="navbar bg-base-100 border-b border-base-200 px-6">
+        <nav className="navbar border-b border-base-200 bg-base-100 px-6 sticky top-0 z-50">
           <div className="flex-1">
-            <Link href="/" className="text-lg font-semibold tracking-tight">
-              Hike Explorer
+            <Link
+              href="/"
+              className="text-base font-bold tracking-tight flex items-center gap-2"
+            >
+              <span className="text-primary">🥾</span> Hike Explorer
             </Link>
           </div>
-          <div className="flex-none">
+          <div className="flex-none hidden md:flex gap-1">
+            <Link href="#explore" className="btn btn-ghost btn-sm">
+              Explore
+            </Link>
+            <Link href="#features" className="btn btn-ghost btn-sm">
+              Features
+            </Link>
+            <Link href="#donate" className="btn btn-ghost btn-sm">
+              Donate
+            </Link>
+          </div>
+          <div className="flex-1 flex justify-end gap-2">
             {user ? (
               <div className="flex items-center gap-3">
-                <span className="text-sm text-base-content/60">
-                  {user.email}
-                </span>
                 <form action={signOut}>
                   <button type="submit" className="btn btn-ghost btn-sm">
                     Sign out
                   </button>
                 </form>
+                <Link href="/test" className="btn btn-primary btn-sm">
+                  Dashboard
+                </Link>
               </div>
             ) : (
-              <form action={signInWithGoogle}>
-                <button type="submit" className="btn btn-outline btn-sm">
-                  Login with Google
-                </button>
-              </form>
+              <div className="flex items-center gap-2">
+                <form action={signInWithGoogle}>
+                  <button type="submit" className="btn btn-ghost btn-sm">
+                    Log In
+                  </button>
+                </form>
+                <Link href="/test" className="btn btn-primary btn-sm">
+                  Get Started
+                </Link>
+              </div>
             )}
           </div>
         </nav>
