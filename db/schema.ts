@@ -79,7 +79,7 @@ export const trackPoints = pgTable("track_points", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   hike_id: uuid("hike_id")
     .notNull()
-    .references(() => hikes.id),
+    .references(() => hikes.id, { onDelete: "cascade" }),
   seq: integer("seq").notNull(),
   lat: doublePrecision("lat").notNull(),
   lng: doublePrecision("lng").notNull(),

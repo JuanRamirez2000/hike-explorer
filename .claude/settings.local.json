@@ -14,7 +14,8 @@
       "Bash(cmd /c \"git config --list | findstr credential\")",
       "Bash(git config:*)",
       "Bash(printf \"protocol=https\\\\nhost=github.com\\\\n\")",
-      "Bash(git credential:*)"
+      "Bash(git credential:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

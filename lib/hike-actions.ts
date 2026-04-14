@@ -3,6 +3,23 @@
 import { db } from "@/db";
 import { hikes, trackPoints } from "@/db/schema";
 import type { ParsedHikePayload, UploadResult } from "@/types/hike-upload";
+import { createClient } from "@/utills/server";
+import { eq, and } from "drizzle-orm";
+import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+async function getCurrentUser() {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+}
+
+// ── actions ───────────────────────────────────────────────────────────────────
 
 export async function saveHike(
   payload: ParsedHikePayload,
@@ -44,5 +61,51 @@ export async function saveHike(
     await db.insert(trackPoints).values(rows.slice(i, i + CHUNK_SIZE));
   }
 
+  revalidatePath("/user");
   return { success: true, hikeId: hike.id };
+}
+
+export async function deleteHike(
+  hikeId: string,
+): Promise<{ success: boolean; error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  // ownership check baked into the WHERE clause — can't delete someone else's hike
+  const deleted = await db
+    .delete(hikes)
+    .where(and(eq(hikes.id, hikeId), eq(hikes.user_id, user.id)))
+    .returning({ id: hikes.id });
+
+  if (deleted.length === 0) {
+    return { success: false, error: "Hike not found" };
+  }
+
+  revalidatePath("/user");
+  return { success: true };
+}
+
+export async function updateHike(
+  hikeId: string,
+  fields: { name: string; date: string | null; creator: string },
+): Promise<{ success: boolean; error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const updated = await db
+    .update(hikes)
+    .set({
+      name: fields.name,
+      date: fields.date ?? undefined,
+      creator: fields.creator || undefined,
+    })
+    .where(and(eq(hikes.id, hikeId), eq(hikes.user_id, user.id)))
+    .returning({ id: hikes.id });
+
+  if (updated.length === 0) {
+    return { success: false, error: "Hike not found" };
+  }
+
+  revalidatePath("/user");
+  return { success: true };
 }

@@ -4,6 +4,7 @@ import { buildHikePayload, getGPXMetadata } from "@/lib/gpx-parser";
 import { saveHike } from "@/lib/hike-actions";
 import type { GPXMetadataSummary } from "@/types/hike-upload";
 import { createClient } from "@/utills/client";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -25,6 +26,7 @@ function fmtElevation(m: number): string {
 // ── page ─────────────────────────────────────────────────────────────────────
 
 export default function TestPage() {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [metadata, setMetadata] = useState<GPXMetadataSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +97,10 @@ export default function TestPage() {
 
       const result = await saveHike(payload, user.id);
       setSubmitResult(result);
+      if (result.success) {
+        router.push("/user");
+        return;
+      }
     } catch (err) {
       setSubmitResult({
         success: false,
