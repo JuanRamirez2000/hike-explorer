@@ -34,6 +34,7 @@ export interface ParsedHikePayload {
   bbox: [number, number, number, number] | null;
   trackPoints: ParsedTrackPoint[];
   stats: HikeStats;
+  gpxStoragePath?: string;
 }
 
 export type UploadResult =
