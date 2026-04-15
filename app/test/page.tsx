@@ -2,26 +2,12 @@
 
 import { buildHikePayload, getGPXMetadata } from "@/lib/gpx-parser";
 import { saveHike } from "@/lib/hike-actions";
+import { fmtDuration, fmtDistance, fmtElevation, type UnitSystem } from "@/lib/format";
 import type { GPXMetadataSummary } from "@/types/hike-upload";
 import { createClient } from "@/utills/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-function fmtDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
-function fmtDistance(km: number): string {
-  return `${km.toFixed(2)} km`;
-}
-
-function fmtElevation(m: number): string {
-  return `${Math.round(m)} m`;
-}
+import StatRow from "@/components/StatRow";
 
 // ── page ─────────────────────────────────────────────────────────────────────
 
@@ -37,6 +23,7 @@ export default function TestPage() {
   const [formDate, setFormDate] = useState("");
   const [formCreator, setFormCreator] = useState("");
 
+  const [unit, setUnit] = useState<UnitSystem>("metric");
   const [submitting, setSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<
     { success: true; hikeId: string } | { success: false; error: string } | null
@@ -181,26 +168,42 @@ export default function TestPage() {
 
               {/* ── computed stats ── */}
               <div className="space-y-3">
-                <h2 className="font-semibold text-lg">Computed Stats</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold text-lg">Computed Stats</h2>
+                  <div className="join">
+                    <button
+                      className={`join-item btn btn-xs ${unit === "metric" ? "btn-neutral" : "btn-ghost"}`}
+                      onClick={() => setUnit("metric")}
+                    >
+                      km / m
+                    </button>
+                    <button
+                      className={`join-item btn btn-xs ${unit === "imperial" ? "btn-neutral" : "btn-ghost"}`}
+                      onClick={() => setUnit("imperial")}
+                    >
+                      mi / ft
+                    </button>
+                  </div>
+                </div>
                 <table className="table table-sm w-full">
                   <tbody>
-                    <Row
+                    <StatRow wide
                       label="Distance"
                       value={
                         metadata.distanceKm !== null
-                          ? fmtDistance(metadata.distanceKm)
+                          ? fmtDistance(metadata.distanceKm, unit)
                           : "—"
                       }
                     />
-                    <Row
+                    <StatRow wide
                       label="Elevation gain"
                       value={
                         metadata.elevationGainM !== null
-                          ? fmtElevation(metadata.elevationGainM)
+                          ? fmtElevation(metadata.elevationGainM, unit)
                           : "—"
                       }
                     />
-                    <Row
+                    <StatRow wide
                       label="Duration"
                       value={
                         metadata.durationSeconds !== null
@@ -208,7 +211,7 @@ export default function TestPage() {
                           : "—"
                       }
                     />
-                    <Row
+                    <StatRow wide
                       label="Start time"
                       value={
                         metadata.startTime
@@ -216,7 +219,7 @@ export default function TestPage() {
                           : "—"
                       }
                     />
-                    <Row
+                    <StatRow wide
                       label="End time"
                       value={
                         metadata.endTime
@@ -224,8 +227,8 @@ export default function TestPage() {
                           : "—"
                       }
                     />
-                    <Row label="Track points" value={metadata.totalPoints.toLocaleString()} />
-                    <Row label="Tracks" value={String(metadata.trackCount)} />
+                    <StatRow wide label="Track points" value={metadata.totalPoints.toLocaleString()} />
+                    <StatRow wide label="Tracks" value={String(metadata.trackCount)} />
                   </tbody>
                 </table>
               </div>
@@ -261,11 +264,3 @@ export default function TestPage() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <tr>
-      <td className="text-base-content/60 w-40">{label}</td>
-      <td className="font-mono">{value}</td>
-    </tr>
-  );
-}

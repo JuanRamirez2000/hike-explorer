@@ -15,7 +15,9 @@
       "Bash(git config:*)",
       "Bash(printf \"protocol=https\\\\nhost=github.com\\\\n\")",
       "Bash(git credential:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(git remote:*)",
+      "Bash(gh issue:*)"
     ]
   }
 }

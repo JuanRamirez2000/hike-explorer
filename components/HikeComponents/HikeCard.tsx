@@ -4,6 +4,8 @@ import { deleteHike, updateHike } from "@/lib/hike-actions";
 import type { hikes } from "@/db/schema";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import DeleteHikeModal from "@/components/HikeComponents/DeleteHikeModal";
+import StatRow from "@/components/StatRow";
 
 type Hike = typeof hikes.$inferSelect;
 
@@ -19,6 +21,7 @@ export default function HikeCard({ hike }: { hike: Hike }) {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // edit form state seeded from hike
   const [name, setName] = useState(hike.name);
@@ -26,13 +29,13 @@ export default function HikeCard({ hike }: { hike: Hike }) {
   const [creator, setCreator] = useState(hike.creator ?? "");
 
   async function handleDelete() {
-    if (!confirm(`Delete "${hike.name}"? This cannot be undone.`)) return;
     setBusy(true);
     setError(null);
     const result = await deleteHike(hike.id);
     if (result.success) {
       router.refresh();
     } else {
+      setShowDeleteModal(false);
       setError(result.error ?? "Delete failed");
       setBusy(false);
     }
@@ -60,7 +63,6 @@ export default function HikeCard({ hike }: { hike: Hike }) {
   }
 
   function handleCancelEdit() {
-    // reset to current saved values
     setName(hike.name);
     setDate(hike.date ?? "");
     setCreator(hike.creator ?? "");
@@ -75,7 +77,9 @@ export default function HikeCard({ hike }: { hike: Hike }) {
           /* ── edit form ── */
           <div className="space-y-3">
             <label className="form-control w-full">
-              <span className="label-text text-xs text-base-content/60 mb-1">Name</span>
+              <span className="label-text text-xs text-base-content/60 mb-1">
+                Name
+              </span>
               <input
                 type="text"
                 className="input input-bordered input-sm w-full"
@@ -84,7 +88,9 @@ export default function HikeCard({ hike }: { hike: Hike }) {
               />
             </label>
             <label className="form-control w-full">
-              <span className="label-text text-xs text-base-content/60 mb-1">Date</span>
+              <span className="label-text text-xs text-base-content/60 mb-1">
+                Date
+              </span>
               <input
                 type="date"
                 className="input input-bordered input-sm w-full"
@@ -93,7 +99,9 @@ export default function HikeCard({ hike }: { hike: Hike }) {
               />
             </label>
             <label className="form-control w-full">
-              <span className="label-text text-xs text-base-content/60 mb-1">Creator / Device</span>
+              <span className="label-text text-xs text-base-content/60 mb-1">
+                Creator / Device
+              </span>
               <input
                 type="text"
                 className="input input-bordered input-sm w-full"
@@ -102,9 +110,7 @@ export default function HikeCard({ hike }: { hike: Hike }) {
               />
             </label>
 
-            {error && (
-              <p className="text-error text-sm">{error}</p>
-            )}
+            {error && <p className="text-error text-sm">{error}</p>}
 
             <div className="flex gap-2 pt-1">
               <button
@@ -112,7 +118,9 @@ export default function HikeCard({ hike }: { hike: Hike }) {
                 onClick={handleSave}
                 disabled={busy}
               >
-                {busy && <span className="loading loading-spinner loading-xs" />}
+                {busy && (
+                  <span className="loading loading-spinner loading-xs" />
+                )}
                 Save
               </button>
               <button
@@ -128,7 +136,9 @@ export default function HikeCard({ hike }: { hike: Hike }) {
           /* ── display mode ── */
           <>
             <div>
-              <h2 className="card-title text-base leading-tight">{hike.name}</h2>
+              <h2 className="card-title text-base leading-tight">
+                {hike.name}
+              </h2>
               <p className="text-sm text-base-content/50">
                 {hike.date ?? "No date"} · {hike.creator ?? "Unknown device"}
               </p>
@@ -179,24 +189,23 @@ export default function HikeCard({ hike }: { hike: Hike }) {
               </button>
               <button
                 className="btn btn-error btn-sm btn-outline"
-                onClick={handleDelete}
+                onClick={() => setShowDeleteModal(true)}
                 disabled={busy}
               >
-                {busy ? <span className="loading loading-spinner loading-xs" /> : "Delete"}
+                Delete
               </button>
             </div>
           </>
         )}
       </div>
-    </div>
-  );
-}
 
-function StatRow({ label, value }: { label: string; value: string }) {
-  return (
-    <tr>
-      <td className="text-base-content/50 w-24">{label}</td>
-      <td className="font-mono">{value}</td>
-    </tr>
+      <DeleteHikeModal
+        hikeName={hike.name}
+        open={showDeleteModal}
+        busy={busy}
+        onConfirm={handleDelete}
+        onClose={() => setShowDeleteModal(false)}
+      />
+    </div>
   );
 }

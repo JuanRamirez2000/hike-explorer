@@ -4,7 +4,7 @@ import { createClient } from "@/utills/server";
 import { eq, desc } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import HikeCard from "./HikeCard";
+import HikeCard from "@/components/HikeComponents/HikeCard";
 
 export default async function UserPage() {
   const cookieStore = await cookies();

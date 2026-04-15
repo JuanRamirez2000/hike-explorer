@@ -71,15 +71,21 @@ export async function deleteHike(
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Not authenticated" };
 
-  // ownership check baked into the WHERE clause — can't delete someone else's hike
-  const deleted = await db
-    .delete(hikes)
+  // Verify ownership before deleting anything
+  const owned = await db
+    .select({ id: hikes.id })
+    .from(hikes)
     .where(and(eq(hikes.id, hikeId), eq(hikes.user_id, user.id)))
-    .returning({ id: hikes.id });
+    .limit(1);
 
-  if (deleted.length === 0) {
+  if (owned.length === 0) {
     return { success: false, error: "Hike not found" };
   }
+
+  // Delete child rows first — guard against DB constraints that lack ON DELETE CASCADE
+  await db.delete(trackPoints).where(eq(trackPoints.hike_id, hikeId));
+
+  await db.delete(hikes).where(eq(hikes.id, hikeId));
 
   revalidatePath("/user");
   return { success: true };
