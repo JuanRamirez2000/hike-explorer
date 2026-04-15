@@ -57,6 +57,10 @@ export const hikes = pgTable(
     start_time: timestamp("start_time", { withTimezone: true }),
     end_time: timestamp("end_time", { withTimezone: true }),
 
+    // ── original GPX file ──────────────────────────────────────────────────
+    // path within the "gpx-files" Supabase Storage bucket
+    gpx_storage_path: text("gpx_storage_path"),
+
     // ── catch-all for future unstructured metadata ──────────────────────────
     // e.g. historical weather, user notes, terrain tags
     extra: jsonb("extra"),

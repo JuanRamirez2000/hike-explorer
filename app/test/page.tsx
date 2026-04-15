@@ -82,7 +82,20 @@ export default function TestPage() {
       payload.date = formDate || null;
       payload.stats.creator = formCreator.trim() || payload.stats.creator;
 
-      const result = await saveHike(payload, user.id);
+      // upload original GPX to storage — path: {userId}/{uuid}.gpx
+      const storagePath = `${user.id}/${crypto.randomUUID()}.gpx`;
+      const { error: storageError } = await supabase.storage
+        .from("gpx-files")
+        .upload(storagePath, file, { contentType: "application/gpx+xml" });
+
+      if (storageError) {
+        setSubmitResult({ success: false, error: `Storage upload failed: ${storageError.message}` });
+        return;
+      }
+
+      payload.gpxStoragePath = storagePath;
+
+      const result = await saveHike(payload);
       setSubmitResult(result);
       if (result.success) {
         router.push("/user");
