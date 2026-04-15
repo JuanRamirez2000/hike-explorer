@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import DeleteHikeModal from "@/components/HikeComponents/DeleteHikeModal";
 import StatRow from "@/components/StatRow";
+import ElevationChart from "@/components/HikeComponents/ElevationChart";
 
 type Hike = typeof hikes.$inferSelect;
 
@@ -16,7 +17,13 @@ function fmtDuration(seconds: number | null): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export default function HikeCard({ hike }: { hike: Hike }) {
+export default function HikeCard({
+  hike,
+  elevations = [],
+}: {
+  hike: Hike;
+  elevations?: number[];
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -177,9 +184,22 @@ export default function HikeCard({ hike }: { hike: Hike }) {
               </tbody>
             </table>
 
+            {elevations.length >= 2 && (
+              <div>
+                <p className="text-xs text-base-content/50 mb-1">Elevation</p>
+                <ElevationChart elevations={elevations} />
+              </div>
+            )}
+
             {error && <p className="text-error text-sm">{error}</p>}
 
             <div className="card-actions justify-end pt-1">
+              <a
+                href={`/hike/${hike.id}/map`}
+                className="btn btn-primary btn-sm"
+              >
+                View on Map
+              </a>
               <button
                 className="btn btn-ghost btn-sm"
                 onClick={() => setEditing(true)}

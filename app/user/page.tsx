@@ -1,7 +1,7 @@
 import { db } from "@/db";
-import { hikes } from "@/db/schema";
+import { hikes, trackPoints } from "@/db/schema";
 import { createClient } from "@/utills/server";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, asc, inArray } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import HikeCard from "@/components/HikeComponents/HikeCard";
@@ -20,6 +20,26 @@ export default async function UserPage() {
     .from(hikes)
     .where(eq(hikes.user_id, user.id))
     .orderBy(desc(hikes.created_at));
+
+  const hikeIds = userHikes.map((h) => h.id);
+  const elevationRows =
+    hikeIds.length > 0
+      ? await db
+          .select({
+            hike_id: trackPoints.hike_id,
+            elevation: trackPoints.elevation,
+          })
+          .from(trackPoints)
+          .where(inArray(trackPoints.hike_id, hikeIds))
+          .orderBy(asc(trackPoints.hike_id), asc(trackPoints.seq))
+      : [];
+
+  const elevationsByHike = new Map<string, number[]>();
+  for (const row of elevationRows) {
+    const arr = elevationsByHike.get(row.hike_id) ?? [];
+    arr.push(row.elevation);
+    elevationsByHike.set(row.hike_id, arr);
+  }
 
   return (
     <div className="min-h-screen p-8">
@@ -41,7 +61,11 @@ export default async function UserPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {userHikes.map((hike) => (
-              <HikeCard key={hike.id} hike={hike} />
+              <HikeCard
+                key={hike.id}
+                hike={hike}
+                elevations={elevationsByHike.get(hike.id) ?? []}
+              />
             ))}
           </div>
         )}
