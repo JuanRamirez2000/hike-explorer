@@ -1,8 +1,7 @@
 import { db } from "@/db";
 import { hikes, trackPoints } from "@/db/schema";
-import { createClient } from "@/utills/server";
+import { getCurrentUser } from "@/lib/session";
 import { eq, asc } from "drizzle-orm";
-import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import HikeMapLoader from "@/components/MapComponents/HikeMapLoader";
 
@@ -13,12 +12,7 @@ export default async function HikeMapPage({
 }) {
   const { id } = await params;
 
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCurrentUser();
   if (!user) redirect("/");
 
   const [hike] = await db

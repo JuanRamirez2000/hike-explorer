@@ -7,17 +7,7 @@ import { createClient } from "@/utills/server";
 import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-async function getCurrentUser() {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
-}
+import { getCurrentUser } from "@/lib/session";
 
 // ── actions ───────────────────────────────────────────────────────────────────
 

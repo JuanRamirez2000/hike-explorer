@@ -1,18 +1,12 @@
 import { db } from "@/db";
 import { hikes, trackPoints } from "@/db/schema";
-import { createClient } from "@/utills/server";
+import { getCurrentUser } from "@/lib/session";
 import { eq, desc, asc, inArray } from "drizzle-orm";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import HikeCard from "@/components/HikeComponents/HikeCard";
 
 export default async function UserPage() {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getCurrentUser();
   if (!user) redirect("/");
 
   const userHikes = await db
