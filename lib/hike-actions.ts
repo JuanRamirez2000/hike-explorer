@@ -3,30 +3,41 @@
 import { db } from "@/db";
 import { hikes, trackPoints } from "@/db/schema";
 import type { ParsedHikePayload, UploadResult } from "@/types/hike-upload";
-import { createClient } from "@/utills/server";
+import { createClient } from "@/utils/server";
 import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/session";
 
+const CHUNK_SIZE = 1000;
+
 // ── actions ───────────────────────────────────────────────────────────────────
 
 export async function saveHike(
   payload: ParsedHikePayload,
+  gpxFile?: File,
 ): Promise<UploadResult> {
-  const user = await getCurrentUser();
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not authenticated" };
 
   if (payload.trackPoints.length === 0) {
     return { success: false, error: "GPX file contains no track points" };
   }
 
-  // Ensure the storage path (if provided) belongs to this user's folder
-  if (
-    payload.gpxStoragePath &&
-    !payload.gpxStoragePath.startsWith(`${user.id}/`)
-  ) {
-    return { success: false, error: "Invalid storage path" };
+  let gpxStoragePath: string | null = null;
+  if (gpxFile) {
+    const storagePath = `${user.id}/${crypto.randomUUID()}.gpx`;
+    const { error: storageError } = await supabase.storage
+      .from("gpx-files")
+      .upload(storagePath, gpxFile, { contentType: "application/gpx+xml" });
+    if (storageError) {
+      return { success: false, error: `Storage upload failed: ${storageError.message}` };
+    }
+    gpxStoragePath = storagePath;
   }
 
   const userId = user.id;
@@ -45,7 +56,7 @@ export async function saveHike(
       duration_seconds: stats.durationSeconds ?? undefined,
       start_time: stats.startTime ? new Date(stats.startTime) : undefined,
       end_time: stats.endTime ? new Date(stats.endTime) : undefined,
-      gpx_storage_path: payload.gpxStoragePath ?? null,
+      gpx_storage_path: gpxStoragePath,
     })
     .returning({ id: hikes.id });
 
@@ -58,7 +69,6 @@ export async function saveHike(
     timestamp: pt.timestamp ? new Date(pt.timestamp) : null,
   }));
 
-  const CHUNK_SIZE = 1000;
   for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
     await db.insert(trackPoints).values(rows.slice(i, i + CHUNK_SIZE));
   }

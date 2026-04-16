@@ -33,7 +33,9 @@
       "Bash('/c/Program Files/GitHub CLI/gh.exe' pr create --title 'feat: GPX storage upload, RLS policies, and secure server actions' --body ':*)",
       "Bash(npm install:*)",
       "Bash(pnpm add:*)",
-      "Bash(pnpm exec:*)"
+      "Bash(pnpm exec:*)",
+      "Bash(npm --version)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }

@@ -1,4 +1,4 @@
-import { createClient } from "@/utills/server";
+import { createClient } from "@/utils/server";
 import { cookies } from "next/headers";
 
 /**

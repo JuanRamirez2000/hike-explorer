@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createClient } from "@/utills/server";
+import { createClient } from "@/utils/server";
 
 export async function signInWithGoogle() {
   const cookieStore = await cookies();

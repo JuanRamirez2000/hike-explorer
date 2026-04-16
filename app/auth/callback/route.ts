@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/utills/server";
+import { createClient } from "@/utils/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 

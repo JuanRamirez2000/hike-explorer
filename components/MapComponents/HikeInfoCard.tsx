@@ -1,18 +1,22 @@
-import { fmtDistance, fmtDuration, fmtElevation } from "@/lib/format";
-import type { hikes } from "@/db/schema";
-import ElevationChart from "@/components/HikeComponents/ElevationChart";
-
-type Hike = typeof hikes.$inferSelect;
+import { fmtDistance, fmtDuration, fmtElevation, type UnitSystem } from "@/lib/format";
+import type { Hike, TrackPointSummary } from "@/types/models";
+import ElevationProfileChart from "@/components/HikeComponents/ElevationProfileChart";
+import PaceChart from "@/components/HikeComponents/PaceChart";
 
 export default function HikeInfoCard({
   hike,
-  elevations = [],
+  trackPoints = [],
+  unit = "metric",
 }: {
   hike: Hike;
-  elevations?: number[];
+  trackPoints?: TrackPointSummary[];
+  unit?: UnitSystem;
 }) {
   return (
-    <div className="absolute top-4 left-4 z-10 card bg-base-100 shadow-xl w-72">
+    <div
+      className="absolute top-4 left-4 z-10 card bg-base-100 shadow-xl w-72 overflow-y-auto"
+      style={{ maxHeight: "calc(100vh - 6rem)" }}
+    >
       <div className="card-body gap-3 p-5">
         <div>
           <h2 className="card-title text-base leading-tight">{hike.name}</h2>
@@ -27,7 +31,7 @@ export default function HikeInfoCard({
               <td className="text-base-content/60 pl-0">Distance</td>
               <td className="text-right pr-0 font-medium">
                 {hike.distance_km !== null
-                  ? fmtDistance(hike.distance_km)
+                  ? fmtDistance(hike.distance_km, unit)
                   : "—"}
               </td>
             </tr>
@@ -35,16 +39,14 @@ export default function HikeInfoCard({
               <td className="text-base-content/60 pl-0">Elev. gain</td>
               <td className="text-right pr-0 font-medium">
                 {hike.elevation_gain_m !== null
-                  ? fmtElevation(hike.elevation_gain_m)
+                  ? fmtElevation(hike.elevation_gain_m, unit)
                   : "—"}
               </td>
             </tr>
             <tr>
               <td className="text-base-content/60 pl-0">Duration</td>
               <td className="text-right pr-0 font-medium">
-                {hike.duration_seconds !== null
-                  ? fmtDuration(hike.duration_seconds)
-                  : "—"}
+                {fmtDuration(hike.duration_seconds)}
               </td>
             </tr>
             <tr>
@@ -58,12 +60,20 @@ export default function HikeInfoCard({
           </tbody>
         </table>
 
-        {elevations.length >= 2 && (
+        {trackPoints.length >= 2 && (
           <>
             <div className="divider my-0" />
             <div>
               <p className="text-xs text-base-content/50 mb-1">Elevation</p>
-              <ElevationChart elevations={elevations} color="#22c55e" height={96} />
+              <ElevationProfileChart
+                trackPoints={trackPoints}
+                unit={unit}
+                height={90}
+              />
+            </div>
+            <div>
+              <p className="text-xs text-base-content/50 mb-1">Pace</p>
+              <PaceChart trackPoints={trackPoints} unit={unit} height={80} />
             </div>
           </>
         )}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { createClient } from "@/utills/server";
+import { createClient } from "@/utils/server";
 import { signInWithGoogle, signOut } from "@/lib/auth";
 
 export default async function Navbar() {
@@ -50,7 +50,7 @@ export default async function Navbar() {
                 Log In
               </button>
             </form>
-            <Link href="/test" className="btn btn-primary btn-sm">
+            <Link href="/upload" className="btn btn-primary btn-sm">
               Get Started
             </Link>
           </div>

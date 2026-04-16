@@ -15,7 +15,7 @@ export default function Home() {
           </p>
         </div>
 
-        <Link href="/test" className="btn btn-primary btn-lg px-10">
+        <Link href="/upload" className="btn btn-primary btn-lg px-10">
           Generate Your First Graphic →
         </Link>
       </div>

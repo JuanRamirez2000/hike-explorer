@@ -28,12 +28,18 @@ export default async function HikeMapPage({
       lat: trackPoints.lat,
       lng: trackPoints.lng,
       elevation: trackPoints.elevation,
+      timestamp: trackPoints.timestamp,
     })
     .from(trackPoints)
     .where(eq(trackPoints.hike_id, id))
     .orderBy(asc(trackPoints.seq));
 
-  const elevations = points.map((p) => p.elevation);
+  const trackPointSummaries = points.map((p) => ({
+    lat: p.lat,
+    lng: p.lng,
+    elevation: p.elevation,
+    timestamp: p.timestamp ? p.timestamp.toISOString() : null,
+  }));
 
-  return <HikeMapLoader hike={hike} trackPoints={points} elevations={elevations} />;
+  return <HikeMapLoader hike={hike} trackPoints={trackPointSummaries} />;
 }

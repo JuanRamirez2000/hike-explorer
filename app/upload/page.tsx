@@ -4,14 +4,13 @@ import { buildHikePayload, getGPXMetadata } from "@/lib/gpx-parser";
 import { saveHike } from "@/lib/hike-actions";
 import { fmtDuration, fmtDistance, fmtElevation, type UnitSystem } from "@/lib/format";
 import type { GPXMetadataSummary } from "@/types/hike-upload";
-import { createClient } from "@/utills/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import StatRow from "@/components/StatRow";
 
 // ── page ─────────────────────────────────────────────────────────────────────
 
-export default function TestPage() {
+export default function UploadPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [metadata, setMetadata] = useState<GPXMetadataSummary | null>(null);
@@ -63,39 +62,13 @@ export default function TestPage() {
     setSubmitting(true);
     setSubmitResult(null);
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setSubmitResult({
-          success: false,
-          error: "You must be signed in to save a hike",
-        });
-        return;
-      }
-
       const payload = await buildHikePayload(file);
       // apply user edits over the parsed defaults
       payload.name = formName.trim() || payload.name;
       payload.date = formDate || null;
       payload.stats.creator = formCreator.trim() || payload.stats.creator;
 
-      // upload original GPX to storage — path: {userId}/{uuid}.gpx
-      const storagePath = `${user.id}/${crypto.randomUUID()}.gpx`;
-      const { error: storageError } = await supabase.storage
-        .from("gpx-files")
-        .upload(storagePath, file, { contentType: "application/gpx+xml" });
-
-      if (storageError) {
-        setSubmitResult({ success: false, error: `Storage upload failed: ${storageError.message}` });
-        return;
-      }
-
-      payload.gpxStoragePath = storagePath;
-
-      const result = await saveHike(payload);
+      const result = await saveHike(payload, file);
       setSubmitResult(result);
       if (result.success) {
         router.push("/user");
@@ -115,7 +88,7 @@ export default function TestPage() {
     <div className="min-h-screen flex items-center justify-center p-8">
       <div className="card w-full max-w-lg bg-base-100 shadow-xl">
         <div className="card-body gap-6">
-          <h1 className="card-title text-2xl">GPX Parser Test</h1>
+          <h1 className="card-title text-2xl">Upload Hike</h1>
 
           <fieldset className="fieldset">
             <legend className="fieldset-legend">GPX File</legend>

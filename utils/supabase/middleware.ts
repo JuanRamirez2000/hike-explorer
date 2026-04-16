@@ -29,7 +29,7 @@ export async function updateSession(request: NextRequest) {
   // createServerClient and getUser, or sessions may not refresh correctly.
   const { data: { user } } = await supabase.auth.getUser();
 
-  const PROTECTED_ROUTES = ["/test"];
+  const PROTECTED_ROUTES = ["/upload"];
   const isProtected = PROTECTED_ROUTES.some((route) =>
     request.nextUrl.pathname.startsWith(route),
   );

@@ -1,39 +1,29 @@
 "use client";
 
 import { deleteHike, updateHike } from "@/lib/hike-actions";
-import type { hikes } from "@/db/schema";
+import type { Hike, TrackPointSummary } from "@/types/models";
+import { fmtDuration, fmtDistance, fmtElevation, type UnitSystem } from "@/lib/format";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import DeleteHikeModal from "@/components/HikeComponents/DeleteHikeModal";
+import EditHikeForm from "@/components/HikeComponents/EditHikeForm";
 import StatRow from "@/components/StatRow";
-import ElevationChart from "@/components/HikeComponents/ElevationChart";
-
-type Hike = typeof hikes.$inferSelect;
-
-function fmtDuration(seconds: number | null): string {
-  if (seconds === null) return "—";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
+import ElevationProfileChart from "@/components/HikeComponents/ElevationProfileChart";
+import PaceChart from "@/components/HikeComponents/PaceChart";
 
 export default function HikeCard({
   hike,
-  elevations = [],
+  trackPoints = [],
 }: {
   hike: Hike;
-  elevations?: number[];
+  trackPoints?: TrackPointSummary[];
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-  // edit form state seeded from hike
-  const [name, setName] = useState(hike.name);
-  const [date, setDate] = useState(hike.date ?? "");
-  const [creator, setCreator] = useState(hike.creator ?? "");
+  const [unit, setUnit] = useState<UnitSystem>("metric");
 
   async function handleDelete() {
     setBusy(true);
@@ -48,17 +38,17 @@ export default function HikeCard({
     }
   }
 
-  async function handleSave() {
-    if (!name.trim()) {
-      setError("Name is required");
-      return;
-    }
+  async function handleSave(data: {
+    name: string;
+    date: string;
+    creator: string;
+  }) {
     setBusy(true);
     setError(null);
     const result = await updateHike(hike.id, {
-      name: name.trim(),
-      date: date || null,
-      creator: creator.trim(),
+      name: data.name,
+      date: data.date || null,
+      creator: data.creator,
     });
     if (result.success) {
       setEditing(false);
@@ -69,78 +59,23 @@ export default function HikeCard({
     setBusy(false);
   }
 
-  function handleCancelEdit() {
-    setName(hike.name);
-    setDate(hike.date ?? "");
-    setCreator(hike.creator ?? "");
-    setError(null);
-    setEditing(false);
-  }
-
   return (
     <div className="card bg-base-100 border border-base-300 shadow-sm">
       <div className="card-body gap-3 p-5">
         {editing ? (
-          /* ── edit form ── */
-          <div className="space-y-3">
-            <label className="form-control w-full">
-              <span className="label-text text-xs text-base-content/60 mb-1">
-                Name
-              </span>
-              <input
-                type="text"
-                className="input input-bordered input-sm w-full"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </label>
-            <label className="form-control w-full">
-              <span className="label-text text-xs text-base-content/60 mb-1">
-                Date
-              </span>
-              <input
-                type="date"
-                className="input input-bordered input-sm w-full"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </label>
-            <label className="form-control w-full">
-              <span className="label-text text-xs text-base-content/60 mb-1">
-                Creator / Device
-              </span>
-              <input
-                type="text"
-                className="input input-bordered input-sm w-full"
-                value={creator}
-                onChange={(e) => setCreator(e.target.value)}
-              />
-            </label>
-
-            {error && <p className="text-error text-sm">{error}</p>}
-
-            <div className="flex gap-2 pt-1">
-              <button
-                className="btn btn-primary btn-sm flex-1"
-                onClick={handleSave}
-                disabled={busy}
-              >
-                {busy && (
-                  <span className="loading loading-spinner loading-xs" />
-                )}
-                Save
-              </button>
-              <button
-                className="btn btn-ghost btn-sm flex-1"
-                onClick={handleCancelEdit}
-                disabled={busy}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+          <EditHikeForm
+            initialName={hike.name}
+            initialDate={hike.date ?? ""}
+            initialCreator={hike.creator ?? ""}
+            busy={busy}
+            error={error}
+            onSave={handleSave}
+            onCancel={() => {
+              setError(null);
+              setEditing(false);
+            }}
+          />
         ) : (
-          /* ── display mode ── */
           <>
             <div>
               <h2 className="card-title text-base leading-tight">
@@ -157,7 +92,7 @@ export default function HikeCard({
                   label="Distance"
                   value={
                     hike.distance_km !== null
-                      ? `${hike.distance_km.toFixed(2)} km`
+                      ? fmtDistance(hike.distance_km, unit)
                       : "—"
                   }
                 />
@@ -165,7 +100,7 @@ export default function HikeCard({
                   label="Elev. gain"
                   value={
                     hike.elevation_gain_m !== null
-                      ? `${Math.round(hike.elevation_gain_m)} m`
+                      ? fmtElevation(hike.elevation_gain_m, unit)
                       : "—"
                   }
                 />
@@ -184,10 +119,46 @@ export default function HikeCard({
               </tbody>
             </table>
 
-            {elevations.length >= 2 && (
-              <div>
-                <p className="text-xs text-base-content/50 mb-1">Elevation</p>
-                <ElevationChart elevations={elevations} />
+            {trackPoints.length >= 2 && (
+              <div className="space-y-3">
+                {/* unit toggle shared by both charts */}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-base-content/50">Charts</p>
+                  <div className="join">
+                    <button
+                      className={`join-item btn btn-xs ${unit === "metric" ? "btn-neutral" : "btn-ghost"}`}
+                      onClick={() => setUnit("metric")}
+                    >
+                      km
+                    </button>
+                    <button
+                      className={`join-item btn btn-xs ${unit === "imperial" ? "btn-neutral" : "btn-ghost"}`}
+                      onClick={() => setUnit("imperial")}
+                    >
+                      mi
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs text-base-content/50 mb-1">
+                    Elevation
+                  </p>
+                  <ElevationProfileChart
+                    trackPoints={trackPoints}
+                    unit={unit}
+                    height={110}
+                  />
+                </div>
+
+                <div>
+                  <p className="text-xs text-base-content/50 mb-1">Pace</p>
+                  <PaceChart
+                    trackPoints={trackPoints}
+                    unit={unit}
+                    height={90}
+                  />
+                </div>
               </div>
             )}
 
