@@ -5,9 +5,18 @@ import Map, { type MapRef } from "react-map-gl/mapbox";
 import DeckGL from "@deck.gl/react";
 import { PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import type { MapViewState } from "@deck.gl/core";
+import type { FeatureCollection } from "geojson";
 import type { Hike, TrackPointSummary } from "@/types/models";
-import { haversineKm, lerpColor } from "@/lib/geo";
+import { haversineKm, lerpColor, rdpDecimate } from "@/lib/geo";
 import { MI_TO_KM, type UnitSystem } from "@/lib/format";
+import {
+  buildGeoJSON,
+  computeSingleObserver,
+  sampleObservers,
+  VIEWSHED_DEFAULTS,
+} from "@/lib/viewshed";
+import type { ViewshedProgress } from "@/lib/viewshed";
+import { saveViewshed } from "@/lib/hike-actions";
 import HikeInfoCard from "./HikeInfoCard";
 
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -150,10 +159,40 @@ export default function HikeMapView({
   const [colorMode, setColorMode]             = useState<ColorMode>("default");
   const [unit, setUnit]                       = useState<UnitSystem>("metric");
 
+  // ── viewshed state ───────────────────────────────────────────────────────
+
+  type ViewshedStatus = "idle" | "computing" | "done" | "error";
+
+  const cachedGeojson =
+    hike.fog_status === "complete" && hike.fog_geojson
+      ? (hike.fog_geojson as FeatureCollection)
+      : null;
+
+  const [viewshedData,     setViewshedData]     = useState<FeatureCollection | null>(cachedGeojson);
+  const [viewshedStatus,   setViewshedStatus]   = useState<ViewshedStatus>(cachedGeojson ? "done" : "idle");
+  const [viewshedVisible,  setViewshedVisible]  = useState(false);
+  const [viewshedProgress, setViewshedProgress] = useState<ViewshedProgress>({ processed: 0, total: 0, pct: 0 });
+  const [viewshedError,    setViewshedError]    = useState<string | null>(null);
+  const computeAbortRef = useRef(false);
+
+  // Cancel any in-flight computation when the component unmounts
+  useEffect(() => () => {
+    computeAbortRef.current = true;
+    const map = mapRef.current?.getMap();
+    if (map?.isStyleLoaded()) {
+      if (map.getLayer("viewshed-fill")) map.removeLayer("viewshed-fill");
+      if (map.getSource("viewshed"))     map.removeSource("viewshed");
+    }
+  }, []);
+
   const mapRef          = useRef<MapRef>(null);
   const terrainExpRef   = useRef(terrainExp);
-  // Sync ref outside render so callbacks always see the latest value
-  useEffect(() => { terrainExpRef.current = terrainExp; });
+  // Refs so style.load callback (created once) always sees current viewshed state
+  const viewshedDataRef    = useRef(viewshedData);
+  const viewshedVisibleRef = useRef(viewshedVisible);
+  useEffect(() => { terrainExpRef.current    = terrainExp; });
+  useEffect(() => { viewshedDataRef.current    = viewshedData; });
+  useEffect(() => { viewshedVisibleRef.current = viewshedVisible; });
 
   // ── terrain helpers ──────────────────────────────────────────────────────
 
@@ -181,16 +220,42 @@ export default function HikeMapView({
     }
   }, []);
 
+  // Manage the Mapbox native fill layer that drapes on terrain.
+  // A Mapbox fill layer is used instead of a deck.gl GeoJsonLayer because
+  // Mapbox automatically projects fill layers onto the terrain mesh surface.
+  const syncViewshedLayer = useCallback((map: ReturnType<MapRef["getMap"]>) => {
+    if (!map) return;
+    if (map.getLayer("viewshed-fill")) map.removeLayer("viewshed-fill");
+    if (map.getSource("viewshed"))     map.removeSource("viewshed");
+    if (!viewshedVisibleRef.current || !viewshedDataRef.current) return;
+    map.addSource("viewshed", { type: "geojson", data: viewshedDataRef.current });
+    map.addLayer({
+      id:     "viewshed-fill",
+      type:   "fill",
+      source: "viewshed",
+      paint:  { "fill-color": "#1e40af", "fill-opacity": 0.35 },
+    });
+  }, []);
+
   const onMapLoad = useCallback(() => {
     const map = mapRef.current?.getMap();
     if (!map) return;
     setupTerrain(map);
-    // Re-apply after style changes (style change resets all sources/layers)
+    // Re-apply terrain + viewshed after style changes (style change resets all sources/layers)
     map.on("style.load", () => {
       const m = mapRef.current?.getMap();
-      if (m) setupTerrain(m);
+      if (!m) return;
+      setupTerrain(m);
+      syncViewshedLayer(m);
     });
-  }, [setupTerrain]);
+  }, [setupTerrain, syncViewshedLayer]);
+
+  // Sync viewshed layer whenever data or visibility changes
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map?.isStyleLoaded()) return;
+    syncViewshedLayer(map);
+  }, [viewshedData, viewshedVisible, syncViewshedLayer]);
 
   // Live-update terrain exaggeration without waiting for a style reload
   useEffect(() => {
@@ -198,6 +263,69 @@ export default function HikeMapView({
     if (!map?.getSource("mapbox-dem")) return;
     map.setTerrain({ source: "mapbox-dem", exaggeration: terrainExp });
   }, [terrainExp]);
+
+  // ── viewshed computation ──────────────────────────────────────────────────
+
+  async function handleComputeViewshed() {
+    const map = mapRef.current?.getMap();
+    if (!map || trackPoints.length === 0) return;
+
+    // Pre-flight check: terrain must be loaded for the midpoint of the route
+    const mid = trackPoints[Math.floor(trackPoints.length / 2)];
+    if ((map.queryTerrainElevation([mid.lng, mid.lat]) ?? null) === null) {
+      setViewshedStatus("error");
+      setViewshedError("Terrain tiles not loaded yet — zoom to the route and wait a moment, then try again.");
+      return;
+    }
+
+    setViewshedStatus("computing");
+    setViewshedError(null);
+    computeAbortRef.current = false;
+
+    const getElevation = (lng: number, lat: number): number | null =>
+      map.queryTerrainElevation([lng, lat]) ?? null;
+
+    const opts = VIEWSHED_DEFAULTS;
+    // Use bbox center as fixed reference latitude so all observers share the same cell grid
+    const refLat = hike.bbox
+      ? (hike.bbox[1] + hike.bbox[3]) / 2
+      : trackPoints[Math.floor(trackPoints.length / 2)].lat;
+
+    // RDP decimation MUST precede ray-casting — never cast all raw GPS points
+    const decimated = rdpDecimate(trackPoints, 10);
+    const observers = sampleObservers(decimated);
+    setViewshedProgress({ processed: 0, total: observers.length, pct: 0 });
+
+    const allVisible = new Set<string>();
+    const CHUNK = 5; // observers processed per setTimeout tick
+
+    await new Promise<void>((resolve, reject) => {
+      let i = 0;
+      function step() {
+        if (computeAbortRef.current) { reject(new Error("cancelled")); return; }
+        const end = Math.min(i + CHUNK, observers.length);
+        for (; i < end; i++) {
+          for (const key of computeSingleObserver(observers[i], getElevation, opts, refLat)) {
+            allVisible.add(key);
+          }
+        }
+        setViewshedProgress({ processed: i, total: observers.length, pct: (i / observers.length) * 100 });
+        if (i < observers.length) setTimeout(step, 0);
+        else resolve();
+      }
+      setTimeout(step, 0);
+    }).catch(() => { /* cancelled — do nothing */ });
+
+    if (computeAbortRef.current) return;
+
+    const geojson = buildGeoJSON(allVisible, opts, refLat);
+    setViewshedData(geojson);
+    setViewshedStatus("done");
+    setViewshedVisible(true);
+
+    // Persist in the background — don't block the UI
+    saveViewshed(hike.id, geojson).catch(console.error);
+  }
 
   // ── fit route ────────────────────────────────────────────────────────────
 
@@ -309,6 +437,7 @@ export default function HikeMapView({
         backgroundPadding:    [4, 2, 4, 2],
         updateTriggers: { getPosition: te },
       }),
+
     ];
   }, [trackPoints, terrainExp, colorMode, elevationColors, paceColors, pins, distMarkers]);
 
@@ -386,6 +515,47 @@ export default function HikeMapView({
           <span className="text-xs text-base-content/60 w-7 shrink-0 text-right">
             {terrainExp.toFixed(1)}×
           </span>
+        </div>
+
+        {/* viewshed controls */}
+        <div className="flex flex-col gap-1.5 bg-base-100/90 shadow-lg rounded-lg px-3 py-2 min-w-[160px]">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-base-content/80 flex-1">Viewshed</span>
+            {viewshedStatus === "done" && (
+              <button
+                className={`btn btn-xs ${viewshedVisible ? "btn-success" : "btn-ghost"}`}
+                onClick={() => setViewshedVisible((v) => !v)}
+              >
+                {viewshedVisible ? "Hide" : "Show"}
+              </button>
+            )}
+          </div>
+
+          {viewshedStatus === "computing" && (
+            <div className="flex items-center gap-2">
+              <progress
+                className="progress progress-success flex-1"
+                value={viewshedProgress.pct}
+                max={100}
+              />
+              <span className="text-xs text-base-content/60 shrink-0 w-8 text-right">
+                {Math.round(viewshedProgress.pct)}%
+              </span>
+            </div>
+          )}
+
+          {viewshedStatus === "error" && (
+            <p className="text-xs text-error leading-tight">{viewshedError}</p>
+          )}
+
+          {viewshedStatus !== "computing" && (
+            <button
+              className="btn btn-xs btn-outline w-full"
+              onClick={handleComputeViewshed}
+            >
+              {viewshedStatus === "done" ? "Recompute" : "Compute Viewshed"}
+            </button>
+          )}
         </div>
       </div>
 

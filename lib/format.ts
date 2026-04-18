@@ -1,11 +1,14 @@
 export type UnitSystem = "metric" | "imperial";
 
 export const KM_TO_MI = 0.621371;
-export const M_TO_FT  = 3.28084;
+export const M_TO_FT = 3.28084;
 export const MI_TO_KM = 1.60934;
 
 // pace is stored internally as min/km; convert to min/mi for imperial
-export function fmtPace(minPerKm: number | null, unit: UnitSystem = "metric"): string {
+export function fmtPace(
+  minPerKm: number | null,
+  unit: UnitSystem = "metric",
+): string {
   if (minPerKm === null) return "—";
   const adjusted = unit === "imperial" ? minPerKm * MI_TO_KM : minPerKm;
   const m = Math.floor(adjusted);

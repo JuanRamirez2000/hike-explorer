@@ -35,7 +35,8 @@
       "Bash(pnpm add:*)",
       "Bash(pnpm exec:*)",
       "Bash(npm --version)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(ls *)"
     ]
   }
 }

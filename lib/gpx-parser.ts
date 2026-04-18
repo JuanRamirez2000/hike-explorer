@@ -62,7 +62,6 @@ function computeElevationGainM(points: GPXPoint[]): number | null {
   return gain;
 }
 
-
 function computeDistanceKm(points: GPXPoint[]): number | null {
   if (points.length < 2) return null;
   let total = 0;
@@ -94,8 +93,7 @@ function computeStats(points: GPXPoint[], creator: string): HikeStats {
     distanceKm: computeDistanceKm(points),
     durationSeconds: computeDurationSeconds(points),
     startTime: withTime.length > 0 ? withTime[0].time! : null,
-    endTime:
-      withTime.length > 1 ? withTime[withTime.length - 1].time! : null,
+    endTime: withTime.length > 1 ? withTime[withTime.length - 1].time! : null,
   };
 }
 
