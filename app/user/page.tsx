@@ -1,10 +1,13 @@
 import { db } from "@/db";
 import { hikes, trackPoints } from "@/db/schema";
 import { getCurrentUser } from "@/lib/supabase/session";
-import { eq, desc, asc, inArray } from "drizzle-orm";
+import { eq, desc, asc } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import HikeCard from "@/components/HikeComponents/HikeCard";
+import DashboardStats from "@/components/DashboardStats";
 import type { TrackPointSummary } from "@/types/models";
+import { CHART_MAX_POINTS } from "@/lib/display-utils";
 
 export default async function UserPage() {
   const user = await getCurrentUser();
@@ -16,32 +19,38 @@ export default async function UserPage() {
     .where(eq(hikes.user_id, user.id))
     .orderBy(desc(hikes.created_at));
 
-  const hikeIds = userHikes.map((h) => h.id);
-  const tpRows =
-    hikeIds.length > 0
-      ? await db
+  // Fetch a capped number of track points per hike in parallel — dashboard charts
+  // only display CHART_MAX_POINTS points, so pulling the full track is wasteful.
+  const trackPointsByHike = new Map<string, TrackPointSummary[]>();
+  if (userHikes.length > 0) {
+    const results = await Promise.all(
+      userHikes.map(async (hike) => {
+        const pts = await db
           .select({
-            hike_id: trackPoints.hike_id,
             lat: trackPoints.lat,
             lng: trackPoints.lng,
             elevation: trackPoints.elevation,
             timestamp: trackPoints.timestamp,
           })
           .from(trackPoints)
-          .where(inArray(trackPoints.hike_id, hikeIds))
-          .orderBy(asc(trackPoints.hike_id), asc(trackPoints.seq))
-      : [];
+          .where(eq(trackPoints.hike_id, hike.id))
+          .orderBy(asc(trackPoints.seq))
+          .limit(CHART_MAX_POINTS);
+        return { hikeId: hike.id, pts };
+      }),
+    );
 
-  const trackPointsByHike = new Map<string, TrackPointSummary[]>();
-  for (const row of tpRows) {
-    const arr = trackPointsByHike.get(row.hike_id) ?? [];
-    arr.push({
-      lat: row.lat,
-      lng: row.lng,
-      elevation: row.elevation,
-      timestamp: row.timestamp ? row.timestamp.toISOString() : null,
-    });
-    trackPointsByHike.set(row.hike_id, arr);
+    for (const { hikeId, pts } of results) {
+      trackPointsByHike.set(
+        hikeId,
+        pts.map((p) => ({
+          lat: p.lat,
+          lng: p.lng,
+          elevation: p.elevation,
+          timestamp: p.timestamp ? p.timestamp.toISOString() : null,
+        })),
+      );
+    }
   }
 
   const totalDistanceKm = userHikes.reduce(
@@ -52,27 +61,17 @@ export default async function UserPage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">My Hikes</h1>
-            {userHikes.length > 0 && (
-              <p className="text-sm text-base-content/50 mt-1">
-                {userHikes.length} hike{userHikes.length !== 1 ? "s" : ""} ·{" "}
-                {totalDistanceKm.toFixed(1)} km total
-              </p>
-            )}
-          </div>
-          <a href="/upload" className="btn btn-primary btn-sm">
-            + Upload Hike
-          </a>
-        </div>
+        <DashboardStats
+          hikeCount={userHikes.length}
+          totalDistanceKm={totalDistanceKm}
+        />
 
         {userHikes.length === 0 ? (
           <div className="text-center py-20 text-base-content/50">
             No hikes yet.{" "}
-            <a href="/upload" className="link">
+            <Link href="/upload" className="link">
               Upload your first GPX file.
-            </a>
+            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

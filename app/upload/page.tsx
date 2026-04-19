@@ -25,9 +25,7 @@ export default function UploadPage() {
 
   const [unit, setUnit] = useState<UnitSystem>("metric");
   const [submitting, setSubmitting] = useState(false);
-  const [submitResult, setSubmitResult] = useState<
-    { success: true; hikeId: string } | { success: false; error: string } | null
-  >(null);
+  const [submitResult, setSubmitResult] = useState<{ error: string } | null>(null);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
@@ -70,14 +68,13 @@ export default function UploadPage() {
       payload.stats.creator = formCreator.trim() || payload.stats.creator;
 
       const result = await saveHike(payload, file);
-      setSubmitResult(result);
       if (result.success) {
         router.push("/user");
         return;
       }
+      setSubmitResult({ error: result.error ?? "Failed to save hike" });
     } catch (err) {
       setSubmitResult({
-        success: false,
         error: err instanceof Error ? err.message : "Failed to save hike",
       });
     } finally {
@@ -200,15 +197,9 @@ export default function UploadPage() {
 
               {/* ── submit ── */}
               {submitResult ? (
-                submitResult.success ? (
-                  <div role="alert" className="alert alert-success">
-                    <span>Hike saved! ID: {submitResult.hikeId}</span>
-                  </div>
-                ) : (
-                  <div role="alert" className="alert alert-error">
-                    <span>{submitResult.error}</span>
-                  </div>
-                )
+                <div role="alert" className="alert alert-error">
+                  <span>{submitResult.error}</span>
+                </div>
               ) : (
                 <button
                   className="btn btn-primary w-full"

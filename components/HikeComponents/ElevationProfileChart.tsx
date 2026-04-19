@@ -7,10 +7,11 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
 } from "recharts";
 import { cumulativeDistancesKm } from "@/lib/geo";
-import { downsamplePoints, CHART_MAX_POINTS } from "@/lib/chart-utils";
+import { downsamplePoints, CHART_MAX_POINTS } from "@/lib/display-utils";
 import type { TrackPointSummary } from "@/types/models";
 import { convertDistance, convertElevation, type UnitSystem } from "@/lib/format";
 
@@ -76,6 +77,11 @@ export default function ElevationProfileChart({
           axisLine={false}
           tickFormatter={(v) => `${v}${elevUnit}`}
           width={38}
+        />
+        <Tooltip
+          formatter={(v) => [`${v} ${elevUnit}`, "Elevation"]}
+          labelFormatter={(l) => `${l} ${distUnit}`}
+          contentStyle={{ fontSize: 11 }}
         />
         <Area
           type="monotone"

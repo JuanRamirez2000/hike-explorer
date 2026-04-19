@@ -1,10 +1,34 @@
 import type { FeatureCollection, Feature, Polygon } from "geojson";
 import type { TrackPointSummary } from "@/types/models";
-import type { Observer, GetElevationFn, ViewshedOptions, ViewshedProgress } from "@/types/viewshed";
-import { haversineKm, metersToDegreeLat, metersToDegreeLng } from "@/lib/geo";
+import { haversineM, metersToDegreeLat, metersToDegreeLng } from "@/lib/geo";
 
-export type { Observer, GetElevationFn, ViewshedOptions, ViewshedProgress };
-export { VIEWSHED_DEFAULTS } from "@/types/viewshed";
+// ── types ─────────────────────────────────────────────────────────────────────
+
+export type Observer = { lat: number; lng: number; elevation: number };
+
+export type GetElevationFn = (lng: number, lat: number) => number | null;
+
+export type ViewshedOptions = {
+  numRays?: number;
+  maxRadiusM?: number;
+  stepM?: number;
+  observerHeightM?: number;
+  cellSizeM?: number;
+};
+
+export type ViewshedProgress = {
+  processed: number;
+  total: number;
+  pct: number;
+};
+
+export const VIEWSHED_DEFAULTS: Required<ViewshedOptions> = {
+  numRays: 72,
+  maxRadiusM: 1500,
+  stepM: 25,
+  observerHeightM: 1.7,
+  cellSizeM: 25,
+};
 
 // ── observer sampling ─────────────────────────────────────────────────────────
 
@@ -21,7 +45,7 @@ export function sampleObservers(
   for (let i = 1; i < trackPoints.length; i++) {
     const prev = trackPoints[i - 1];
     const curr = trackPoints[i];
-    accumulated += haversineKm(prev.lat, prev.lng, curr.lat, curr.lng) * 1000;
+    accumulated += haversineM(prev.lat, prev.lng, curr.lat, curr.lng);
     if (accumulated >= nextThreshold) {
       result.push(curr);
       nextThreshold += intervalM;

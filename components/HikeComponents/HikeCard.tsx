@@ -5,6 +5,7 @@ import type { Hike, TrackPointSummary } from "@/types/models";
 import { fmtDuration, fmtDistance, fmtElevation, type UnitSystem } from "@/lib/format";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Link from "next/link";
 import DeleteHikeModal from "@/components/HikeComponents/DeleteHikeModal";
 import EditHikeForm from "@/components/HikeComponents/EditHikeForm";
 import StatRow from "@/components/StatRow";
@@ -144,12 +145,12 @@ export default function HikeCard({
             {error && <p className="text-error text-sm">{error}</p>}
 
             <div className="card-actions justify-end pt-1">
-              <a
+              <Link
                 href={`/hike/${hike.id}/map`}
                 className="btn btn-primary btn-sm"
               >
                 View on Map
-              </a>
+              </Link>
               <button
                 className="btn btn-ghost btn-sm"
                 onClick={() => setEditing(true)}

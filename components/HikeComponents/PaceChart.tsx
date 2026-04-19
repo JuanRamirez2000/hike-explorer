@@ -8,10 +8,11 @@ import {
   YAxis,
   CartesianGrid,
   ReferenceLine,
+  Tooltip,
   ResponsiveContainer,
 } from "recharts";
 import { cumulativeDistancesKm, haversineKm } from "@/lib/geo";
-import { downsamplePoints, CHART_MAX_POINTS } from "@/lib/chart-utils";
+import { downsamplePoints, CHART_MAX_POINTS } from "@/lib/display-utils";
 import type { TrackPointSummary } from "@/types/models";
 import { convertDistance, convertPace, type UnitSystem } from "@/lib/format";
 
@@ -115,6 +116,11 @@ export default function PaceChart({ trackPoints, unit = "metric", height = 100 }
           tickFormatter={paceLabel}
           width={32}
           reversed
+        />
+        <Tooltip
+          formatter={(v) => [paceLabel(v as number), "Pace"]}
+          labelFormatter={(l) => `${l} ${distUnit}`}
+          contentStyle={{ fontSize: 11 }}
         />
         <ReferenceLine
           y={data.avg}

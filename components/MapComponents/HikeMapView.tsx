@@ -8,7 +8,7 @@ import type { MapViewState } from "@deck.gl/core";
 import type { FeatureCollection } from "geojson";
 import type { Hike, TrackPointSummary } from "@/types/models";
 import { haversineKm, cumulativeDistancesKm, rdpDecimate } from "@/lib/geo";
-import { lerpColor } from "@/lib/color";
+import { lerpColor } from "@/lib/display-utils";
 import { MI_TO_KM, fmtElevation, type UnitSystem } from "@/lib/format";
 import {
   buildGeoJSON,
@@ -16,7 +16,8 @@ import {
   sampleObservers,
   VIEWSHED_DEFAULTS,
 } from "@/lib/viewshed";
-import type { ViewshedProgress, ViewshedStatus } from "@/types/viewshed";
+import type { ViewshedProgress } from "@/lib/viewshed";
+import type { ViewshedStatus } from "@/types/viewshed";
 import { saveViewshed } from "@/lib/viewshed-actions";
 import HikeInfoCard from "./HikeInfoCard";
 
@@ -26,6 +27,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const TERRAIN_EXAGGERATION_DEFAULT = 1.5;
+const VIEWSHED_CHUNK = 5; // observers processed per setTimeout tick
 
 const MAP_STYLES: Record<string, string> = {
   outdoors:  "mapbox://styles/mapbox/outdoors-v12",
@@ -144,6 +146,17 @@ function buildDistanceMarkers(pts: TrackPointSummary[], unit: UnitSystem) {
   return markers;
 }
 
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+function isFeatureCollection(v: unknown): v is FeatureCollection {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    (v as Record<string, unknown>).type === "FeatureCollection" &&
+    Array.isArray((v as Record<string, unknown>).features)
+  );
+}
+
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function HikeMapView({
@@ -162,12 +175,15 @@ export default function HikeMapView({
   // ── viewshed state ───────────────────────────────────────────────────────
 
   const cachedGeojson =
-    hike.fog_status === "complete" && hike.fog_geojson
-      ? (hike.fog_geojson as FeatureCollection)
+    hike.fog_status === "complete" && isFeatureCollection(hike.fog_geojson)
+      ? hike.fog_geojson
       : null;
 
   const [viewshedData,     setViewshedData]     = useState<FeatureCollection | null>(cachedGeojson);
-  const [viewshedStatus,   setViewshedStatus]   = useState<ViewshedStatus>(cachedGeojson ? "done" : "idle");
+  const [viewshedStatus,   setViewshedStatus]   = useState<ViewshedStatus>(
+    cachedGeojson        ? "done"      :
+    hike.fog_status === "processing" ? "computing" : "idle",
+  );
   const [viewshedVisible,  setViewshedVisible]  = useState(false);
   const [viewshedProgress, setViewshedProgress] = useState<ViewshedProgress>({ processed: 0, total: 0, pct: 0 });
   const [viewshedError,    setViewshedError]    = useState<string | null>(null);
@@ -264,7 +280,7 @@ export default function HikeMapView({
 
   // ── viewshed computation ──────────────────────────────────────────────────
 
-  async function handleComputeViewshed() {
+  const handleComputeViewshed = useCallback(async () => {
     const map = mapRef.current?.getMap();
     if (!map || trackPoints.length === 0) return;
 
@@ -295,13 +311,12 @@ export default function HikeMapView({
     setViewshedProgress({ processed: 0, total: observers.length, pct: 0 });
 
     const allVisible = new Set<string>();
-    const CHUNK = 5; // observers processed per setTimeout tick
 
     await new Promise<void>((resolve, reject) => {
       let i = 0;
       function step() {
         if (computeAbortRef.current) { reject(new Error("cancelled")); return; }
-        const end = Math.min(i + CHUNK, observers.length);
+        const end = Math.min(i + VIEWSHED_CHUNK, observers.length);
         for (; i < end; i++) {
           for (const key of computeSingleObserver(observers[i], getElevation, opts, refLat)) {
             allVisible.add(key);
@@ -323,7 +338,7 @@ export default function HikeMapView({
 
     // Persist in the background — don't block the UI
     saveViewshed(hike.id, geojson).catch(console.error);
-  }
+  }, [hike, trackPoints]);
 
   // ── fit route ────────────────────────────────────────────────────────────
 

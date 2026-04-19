@@ -20,17 +20,6 @@ export default async function Navbar() {
           <span className="text-primary">🥾</span> Hike Explorer
         </Link>
       </div>
-      <div className="flex-none hidden md:flex gap-1">
-        <Link href="#explore" className="btn btn-ghost btn-sm">
-          Explore
-        </Link>
-        <Link href="#features" className="btn btn-ghost btn-sm">
-          Features
-        </Link>
-        <Link href="#donate" className="btn btn-ghost btn-sm">
-          Donate
-        </Link>
-      </div>
       <div className="flex-1 flex justify-end gap-2">
         {user ? (
           <div className="flex items-center gap-3">
