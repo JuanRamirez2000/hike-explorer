@@ -15,6 +15,10 @@ export function haversineKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+export function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  return haversineKm(lat1, lon1, lat2, lon2) * 1000;
+}
+
 // ── degree/meter conversions ──────────────────────────────────────────────────
 
 export function metersToDegreeLat(m: number): number {

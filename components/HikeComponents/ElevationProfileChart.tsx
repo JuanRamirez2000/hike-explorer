@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { cumulativeDistancesKm, downsamplePoints, CHART_MAX_POINTS } from "@/lib/geo";
 import type { TrackPointSummary } from "@/types/models";
-import { KM_TO_MI, M_TO_FT, type UnitSystem } from "@/lib/format";
+import { convertDistance, convertElevation, type UnitSystem } from "@/lib/format";
 
 interface Props {
   trackPoints: TrackPointSummary[];
@@ -32,8 +32,8 @@ export default function ElevationProfileChart({
     const sampled = downsamplePoints(trackPoints, CHART_MAX_POINTS);
     const cumKms = cumulativeDistancesKm(sampled);
     return sampled.map((pt, i) => ({
-      dist: parseFloat((unit === "imperial" ? cumKms[i] * KM_TO_MI : cumKms[i]).toFixed(2)),
-      elev: unit === "imperial" ? Math.round(pt.elevation * M_TO_FT) : Math.round(pt.elevation),
+      dist: parseFloat(convertDistance(cumKms[i], unit).toFixed(2)),
+      elev: Math.round(convertElevation(pt.elevation, unit)),
     }));
   }, [trackPoints, unit]);
 

@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { cumulativeDistancesKm, haversineKm, downsamplePoints, CHART_MAX_POINTS } from "@/lib/geo";
 import type { TrackPointSummary } from "@/types/models";
-import { KM_TO_MI, MI_TO_KM, type UnitSystem } from "@/lib/format";
+import { convertDistance, convertPace, type UnitSystem } from "@/lib/format";
 
 const MAX_PACE_KM = 30; // min/km — discard stopped/paused segments
 const SMOOTH_WINDOW = 7;
@@ -78,20 +78,11 @@ export default function PaceChart({ trackPoints, unit = "metric", height = 100 }
     const avgKm = validPaces.reduce((a, b) => a + b, 0) / validPaces.length;
 
     const points = smoothed.map((paceKm, i) => ({
-      dist: parseFloat(
-        (unit === "imperial" ? dists[i] * KM_TO_MI : dists[i]).toFixed(2),
-      ),
-      pace:
-        paceKm !== null
-          ? parseFloat(
-              (unit === "imperial" ? paceKm * MI_TO_KM : paceKm).toFixed(2),
-            )
-          : null,
+      dist: parseFloat(convertDistance(dists[i], unit).toFixed(2)),
+      pace: paceKm !== null ? parseFloat(convertPace(paceKm, unit).toFixed(2)) : null,
     }));
 
-    const avg = parseFloat(
-      (unit === "imperial" ? avgKm * MI_TO_KM : avgKm).toFixed(2),
-    );
+    const avg = parseFloat(convertPace(avgKm, unit).toFixed(2));
 
     return { points, avg };
   }, [trackPoints, unit]);

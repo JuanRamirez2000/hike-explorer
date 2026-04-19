@@ -7,12 +7,14 @@ import { PNG } from "npm:pngjs";
 
 // ── env ───────────────────────────────────────────────────────────────────────
 
-const MAPBOX_TOKEN        = Deno.env.get("MAPBOX_TOKEN") ?? "";
-const SUPABASE_URL        = Deno.env.get("SUPABASE_URL") ?? "";
-const SUPABASE_ANON_KEY   = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const MAPBOX_TOKEN         = process.env.MAPBOX_TOKEN ?? "";
+const SUPABASE_URL         = process.env.SUPABASE_URL ?? "";
+const SUPABASE_ANON_KEY    = process.env.SUPABASE_ANON_KEY ?? "";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
-// ── types (inlined — no @/ aliases in Deno) ───────────────────────────────────
+// ── types (inlined — Deno cannot import from the Next.js @/ path) ────────────
+// Canonical geo functions (haversine, rdpDecimate, metersToDegreeLat/Lng)
+// live in lib/geo.ts — keep in sync if either side changes.
 
 type TrackPoint = { lat: number; lng: number; elevation: number };
 type Observer   = TrackPoint;

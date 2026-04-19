@@ -4,15 +4,28 @@ export const KM_TO_MI = 0.621371;
 export const M_TO_FT = 3.28084;
 export const MI_TO_KM = 1.60934;
 
-// pace is stored internally as min/km; convert to min/mi for imperial
-export function fmtPace(
-  minPerKm: number | null,
-  unit: UnitSystem = "metric",
-): string {
+// ── unit conversion helpers ───────────────────────────────────────────────────
+
+export function convertDistance(km: number, unit: UnitSystem): number {
+  return unit === "imperial" ? km * KM_TO_MI : km;
+}
+
+export function convertElevation(m: number, unit: UnitSystem): number {
+  return unit === "imperial" ? m * M_TO_FT : m;
+}
+
+/** pace is stored internally as min/km; converts to min/mi for imperial */
+export function convertPace(minPerKm: number, unit: UnitSystem): number {
+  return unit === "imperial" ? minPerKm * MI_TO_KM : minPerKm;
+}
+
+// ── formatters ────────────────────────────────────────────────────────────────
+
+export function fmtPace(minPerKm: number | null, unit: UnitSystem = "metric"): string {
   if (minPerKm === null) return "—";
-  const adjusted = unit === "imperial" ? minPerKm * MI_TO_KM : minPerKm;
-  const m = Math.floor(adjusted);
-  const s = Math.round((adjusted - m) * 60);
+  const v = convertPace(minPerKm, unit);
+  const m = Math.floor(v);
+  const s = Math.round((v - m) * 60);
   return `${m}:${s.toString().padStart(2, "0")} ${unit === "imperial" ? "/mi" : "/km"}`;
 }
 
@@ -25,12 +38,12 @@ export function fmtDuration(seconds: number | null): string {
 
 export function fmtDistance(km: number, unit: UnitSystem = "metric"): string {
   return unit === "imperial"
-    ? `${(km * KM_TO_MI).toFixed(2)} mi`
+    ? `${convertDistance(km, unit).toFixed(2)} mi`
     : `${km.toFixed(2)} km`;
 }
 
 export function fmtElevation(m: number, unit: UnitSystem = "metric"): string {
   return unit === "imperial"
-    ? `${Math.round(m * M_TO_FT)} ft`
+    ? `${Math.round(convertElevation(m, unit))} ft`
     : `${Math.round(m)} m`;
 }
