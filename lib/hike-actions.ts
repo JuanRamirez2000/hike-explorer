@@ -3,12 +3,11 @@
 import { db } from "@/db";
 import { hikes, trackPoints } from "@/db/schema";
 import type { ParsedHikePayload, UploadResult } from "@/types/hike-upload";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/session";
 import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "@/lib/session";
-import type { FeatureCollection } from "geojson";
 
 const CHUNK_SIZE = 1000;
 
@@ -87,7 +86,7 @@ export async function saveHike(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({ hikeId: hike.id }),
     }).catch(() => {
@@ -103,7 +102,6 @@ export async function saveHike(
 export async function deleteHike(
   hikeId: string,
 ): Promise<{ success: boolean; error?: string }> {
-  // Use one client for both auth and storage so the same session token is used
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
   const {
@@ -111,7 +109,6 @@ export async function deleteHike(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not authenticated" };
 
-  // Verify ownership and fetch the storage path in one query
   const [owned] = await db
     .select({ id: hikes.id, gpx_storage_path: hikes.gpx_storage_path })
     .from(hikes)
@@ -122,7 +119,6 @@ export async function deleteHike(
     return { success: false, error: "Hike not found" };
   }
 
-  // Remove GPX file from storage before deleting the DB record
   if (owned.gpx_storage_path) {
     const { error: storageError } = await supabase.storage
       .from("gpx-files")
@@ -135,78 +131,10 @@ export async function deleteHike(
     }
   }
 
-  // Delete child rows first — guard against DB constraints that lack ON DELETE CASCADE
   await db.delete(trackPoints).where(eq(trackPoints.hike_id, hikeId));
-
   await db.delete(hikes).where(eq(hikes.id, hikeId));
 
   revalidatePath("/user");
-  return { success: true };
-}
-
-export async function triggerViewshed(
-  hikeId: string,
-): Promise<{ success: boolean; error?: string }> {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Not authenticated" };
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return { success: false, error: "No active session" };
-
-  const [owned] = await db
-    .select({ id: hikes.id })
-    .from(hikes)
-    .where(and(eq(hikes.id, hikeId), eq(hikes.user_id, user.id)))
-    .limit(1);
-
-  if (!owned) return { success: false, error: "Hike not found" };
-
-  await db.update(hikes).set({ fog_status: "processing" }).where(eq(hikes.id, hikeId));
-
-  const edgeFnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/compute-viewshed`;
-  const resp = await fetch(edgeFnUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({ hikeId }),
-  });
-
-  if (!resp.ok) {
-    await db.update(hikes).set({ fog_status: "error" }).where(eq(hikes.id, hikeId));
-    return { success: false, error: `Edge function error: ${resp.status}` };
-  }
-
-  revalidatePath(`/hike/${hikeId}/map`);
-  return { success: true };
-}
-
-export async function saveViewshed(
-  hikeId: string,
-  geojson: FeatureCollection,
-): Promise<{ success: boolean; error?: string }> {
-  const user = await getCurrentUser();
-  if (!user) return { success: false, error: "Not authenticated" };
-
-  const [owned] = await db
-    .select({ id: hikes.id })
-    .from(hikes)
-    .where(and(eq(hikes.id, hikeId), eq(hikes.user_id, user.id)))
-    .limit(1);
-
-  if (!owned) return { success: false, error: "Hike not found" };
-
-  await db
-    .update(hikes)
-    .set({
-      fog_status: "complete",
-      fog_geojson: geojson as unknown as Record<string, unknown>,
-    })
-    .where(eq(hikes.id, hikeId));
-
-  revalidatePath(`/hike/${hikeId}/map`);
   return { success: true };
 }
 

@@ -1,5 +1,7 @@
 export type Observer = { lat: number; lng: number; elevation: number };
 
+export type ViewshedStatus = "idle" | "computing" | "done" | "error";
+
 export type GetElevationFn = (lng: number, lat: number) => number | null;
 
 export type ViewshedOptions = {

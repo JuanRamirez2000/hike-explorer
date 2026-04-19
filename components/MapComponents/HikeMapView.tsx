@@ -7,16 +7,17 @@ import { PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import type { MapViewState } from "@deck.gl/core";
 import type { FeatureCollection } from "geojson";
 import type { Hike, TrackPointSummary } from "@/types/models";
-import { haversineKm, lerpColor, rdpDecimate } from "@/lib/geo";
-import { MI_TO_KM, type UnitSystem } from "@/lib/format";
+import { haversineKm, cumulativeDistancesKm, rdpDecimate } from "@/lib/geo";
+import { lerpColor } from "@/lib/color";
+import { MI_TO_KM, fmtElevation, type UnitSystem } from "@/lib/format";
 import {
   buildGeoJSON,
   computeSingleObserver,
   sampleObservers,
   VIEWSHED_DEFAULTS,
 } from "@/lib/viewshed";
-import type { ViewshedProgress } from "@/lib/viewshed";
-import { saveViewshed } from "@/lib/hike-actions";
+import type { ViewshedProgress, ViewshedStatus } from "@/types/viewshed";
+import { saveViewshed } from "@/lib/viewshed-actions";
 import HikeInfoCard from "./HikeInfoCard";
 
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -62,7 +63,7 @@ function initialViewState(hike: Hike): MapViewState {
   return { longitude: -98.5795, latitude: 39.8283, zoom: 3.5, pitch: 0, bearing: 0 };
 }
 
-function buildPins(pts: TrackPointSummary[]) {
+function buildPins(pts: TrackPointSummary[], unit: UnitSystem) {
   if (pts.length === 0) return [];
   let hi = 0, lo = 0;
   for (let i = 1; i < pts.length; i++) {
@@ -70,10 +71,10 @@ function buildPins(pts: TrackPointSummary[]) {
     if (pts[i].elevation < pts[lo].elevation) lo = i;
   }
   return [
-    { id: "start",   pt: pts[0],       label: "Start" },
-    { id: "end",     pt: pts[pts.length - 1], label: "End" },
-    { id: "highest", pt: pts[hi], label: `▲ ${Math.round(pts[hi].elevation)} m` },
-    { id: "lowest",  pt: pts[lo], label: `▼ ${Math.round(pts[lo].elevation)} m` },
+    { id: "start",   pt: pts[0],                  label: "Start" },
+    { id: "end",     pt: pts[pts.length - 1],      label: "End" },
+    { id: "highest", pt: pts[hi], label: `▲ ${fmtElevation(pts[hi].elevation, unit)}` },
+    { id: "lowest",  pt: pts[lo], label: `▼ ${fmtElevation(pts[lo].elevation, unit)}` },
   ];
 }
 
@@ -128,14 +129,13 @@ function buildDistanceMarkers(pts: TrackPointSummary[], unit: UnitSystem) {
   if (pts.length === 0) return [];
   const intervalKm = unit === "imperial" ? MI_TO_KM : 1;
   const suffix     = unit === "imperial" ? "mi" : "km";
+  const cumDists   = cumulativeDistancesKm(pts);
   const markers: { pt: TrackPointSummary; label: string }[] = [];
-  let cumDist = 0;
   let next = intervalKm;
   let idx  = 1;
 
   for (let i = 1; i < pts.length; i++) {
-    cumDist += haversineKm(pts[i - 1].lat, pts[i - 1].lng, pts[i].lat, pts[i].lng);
-    if (cumDist >= next) {
+    if (cumDists[i] >= next) {
       markers.push({ pt: pts[i], label: `${idx} ${suffix}` });
       next += intervalKm;
       idx++;
@@ -160,8 +160,6 @@ export default function HikeMapView({
   const [unit, setUnit]                       = useState<UnitSystem>("metric");
 
   // ── viewshed state ───────────────────────────────────────────────────────
-
-  type ViewshedStatus = "idle" | "computing" | "done" | "error";
 
   const cachedGeojson =
     hike.fog_status === "complete" && hike.fog_geojson
@@ -348,7 +346,7 @@ export default function HikeMapView({
 
   // ── pins & markers ────────────────────────────────────────────────────────
 
-  const pins            = useMemo(() => buildPins(trackPoints),                  [trackPoints]);
+  const pins            = useMemo(() => buildPins(trackPoints, unit),            [trackPoints, unit]);
   const distMarkers     = useMemo(() => buildDistanceMarkers(trackPoints, unit), [trackPoints, unit]);
 
   // ── deck.gl layers ────────────────────────────────────────────────────────

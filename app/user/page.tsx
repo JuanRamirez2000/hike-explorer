@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { hikes, trackPoints } from "@/db/schema";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/supabase/session";
 import { eq, desc, asc, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import HikeCard from "@/components/HikeComponents/HikeCard";

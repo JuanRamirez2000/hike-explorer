@@ -6,8 +6,8 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
 export const createClient = (
   cookieStore: Awaited<ReturnType<typeof cookies>>,
-) => {
-  return createServerClient(supabaseUrl!, supabaseKey!, {
+) =>
+  createServerClient(supabaseUrl!, supabaseKey!, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -18,11 +18,9 @@ export const createClient = (
             cookieStore.set(name, value, options),
           );
         } catch {
-          // The `setAll` method was called from a Server Component.
-          // This can be ignored if you have middleware refreshing
-          // user sessions.
+          // Called from a Server Component — safe to ignore when middleware
+          // is handling session refresh.
         }
       },
     },
   });
-};

@@ -231,10 +231,10 @@ supabase/
 
 ```bash
 # Next.js (.env.local)
-NEXT_PUBLIC_MAPBOX_TOKEN        # Mapbox GL public token
-NEXT_PUBLIC_SUPABASE_URL        # Supabase project URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY   # Supabase anon key
-DATABASE_URL                    # Postgres connection string (Drizzle)
+NEXT_PUBLIC_MAPBOX_TOKEN                       # Mapbox GL public token
+NEXT_PUBLIC_SUPABASE_URL                       # Supabase project URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY   # Supabase anon/publishable key
+DATABASE_URL                                   # Postgres connection string (Drizzle)
 
 # Edge Function (Supabase dashboard → Settings → Edge Functions → Secrets)
 MAPBOX_TOKEN                    # Server-side token for Terrain-RGB tile fetches

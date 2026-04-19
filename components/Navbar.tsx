@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/lib/supabase/server";
 import { signInWithGoogle, signOut } from "@/lib/auth";
 
 export default async function Navbar() {
