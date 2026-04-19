@@ -17,7 +17,30 @@
       "Bash(git credential:*)",
       "Bash(npx tsc:*)",
       "Bash(git remote:*)",
-      "Bash(gh issue:*)"
+      "Bash(gh issue:*)",
+      "Bash(where gh:*)",
+      "Bash(cmd /c \"where gh\")",
+      "Bash(cmd /c \"where gh 2>&1\")",
+      "Bash(powershell -Command \"gh --version\")",
+      "Bash(powershell -Command \"Get-Command gh -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(powershell -Command \"\\(Get-Item 'C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe' -ErrorAction SilentlyContinue\\).FullName\")",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" auth status)",
+      "Bash(pnpm drizzle-kit:*)",
+      "mcp__5df38f34-75ae-4daf-95eb-77dec713ec4a__list_projects",
+      "mcp__5df38f34-75ae-4daf-95eb-77dec713ec4a__execute_sql",
+      "mcp__5df38f34-75ae-4daf-95eb-77dec713ec4a__apply_migration",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" pr list --head feat/rls-and-storage)",
+      "Bash('/c/Program Files/GitHub CLI/gh.exe' pr create --title 'feat: GPX storage upload, RLS policies, and secure server actions' --body ':*)",
+      "Bash(npm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm exec:*)",
+      "Bash(npm --version)",
+      "mcp__ide__getDiagnostics",
+      "Bash(ls *)",
+      "Bash(xargs -0 wc -l)",
+      "Bash(xargs wc *)",
+      "Bash(git worktree *)",
+      "Bash(grep -E \"next\\\\.config|\\\\.ts$\")"
     ]
   }
 }

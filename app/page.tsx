@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { getCurrentUser } from "@/lib/supabase/session";
+import { signInWithGoogle } from "@/lib/auth";
 
-export default function Home() {
+export default async function Home() {
+  const user = await getCurrentUser();
+
   return (
     <main className="flex-1 flex flex-col items-center justify-center px-6 py-24">
       <div className="max-w-2xl w-full flex flex-col items-center text-center gap-8">
@@ -15,9 +19,22 @@ export default function Home() {
           </p>
         </div>
 
-        <Link href="/test" className="btn btn-primary btn-lg px-10">
-          Generate Your First Graphic →
-        </Link>
+        {user ? (
+          <div className="flex gap-3">
+            <Link href="/user" className="btn btn-primary btn-lg px-10">
+              Go to Dashboard →
+            </Link>
+            <Link href="/upload" className="btn btn-outline btn-lg px-8">
+              Upload Hike
+            </Link>
+          </div>
+        ) : (
+          <form action={signInWithGoogle}>
+            <button type="submit" className="btn btn-primary btn-lg px-10">
+              Sign in to Get Started →
+            </button>
+          </form>
+        )}
       </div>
     </main>
   );

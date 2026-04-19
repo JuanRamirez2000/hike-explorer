@@ -4,14 +4,14 @@ import { buildHikePayload, getGPXMetadata } from "@/lib/gpx-parser";
 import { saveHike } from "@/lib/hike-actions";
 import { fmtDuration, fmtDistance, fmtElevation, type UnitSystem } from "@/lib/format";
 import type { GPXMetadataSummary } from "@/types/hike-upload";
-import { createClient } from "@/utills/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import StatRow from "@/components/StatRow";
+import HikeFieldsForm from "@/components/HikeComponents/HikeFieldsForm";
 
 // ── page ─────────────────────────────────────────────────────────────────────
 
-export default function TestPage() {
+export default function UploadPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [metadata, setMetadata] = useState<GPXMetadataSummary | null>(null);
@@ -25,9 +25,7 @@ export default function TestPage() {
 
   const [unit, setUnit] = useState<UnitSystem>("metric");
   const [submitting, setSubmitting] = useState(false);
-  const [submitResult, setSubmitResult] = useState<
-    { success: true; hikeId: string } | { success: false; error: string } | null
-  >(null);
+  const [submitResult, setSubmitResult] = useState<{ error: string } | null>(null);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
@@ -63,47 +61,20 @@ export default function TestPage() {
     setSubmitting(true);
     setSubmitResult(null);
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setSubmitResult({
-          success: false,
-          error: "You must be signed in to save a hike",
-        });
-        return;
-      }
-
       const payload = await buildHikePayload(file);
       // apply user edits over the parsed defaults
       payload.name = formName.trim() || payload.name;
       payload.date = formDate || null;
       payload.stats.creator = formCreator.trim() || payload.stats.creator;
 
-      // upload original GPX to storage — path: {userId}/{uuid}.gpx
-      const storagePath = `${user.id}/${crypto.randomUUID()}.gpx`;
-      const { error: storageError } = await supabase.storage
-        .from("gpx-files")
-        .upload(storagePath, file, { contentType: "application/gpx+xml" });
-
-      if (storageError) {
-        setSubmitResult({ success: false, error: `Storage upload failed: ${storageError.message}` });
-        return;
-      }
-
-      payload.gpxStoragePath = storagePath;
-
-      const result = await saveHike(payload);
-      setSubmitResult(result);
+      const result = await saveHike(payload, file);
       if (result.success) {
         router.push("/user");
         return;
       }
+      setSubmitResult({ error: result.error ?? "Failed to save hike" });
     } catch (err) {
       setSubmitResult({
-        success: false,
         error: err instanceof Error ? err.message : "Failed to save hike",
       });
     } finally {
@@ -115,7 +86,7 @@ export default function TestPage() {
     <div className="min-h-screen flex items-center justify-center p-8">
       <div className="card w-full max-w-lg bg-base-100 shadow-xl">
         <div className="card-body gap-6">
-          <h1 className="card-title text-2xl">GPX Parser Test</h1>
+          <h1 className="card-title text-2xl">Upload Hike</h1>
 
           <fieldset className="fieldset">
             <legend className="fieldset-legend">GPX File</legend>
@@ -145,36 +116,14 @@ export default function TestPage() {
               {/* ── editable fields ── */}
               <div className="space-y-3">
                 <h2 className="font-semibold text-lg">Hike Details</h2>
-
-                <label className="form-control w-full">
-                  <span className="label-text text-base-content/60 text-sm mb-1">Name</span>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                  />
-                </label>
-
-                <label className="form-control w-full">
-                  <span className="label-text text-base-content/60 text-sm mb-1">Date</span>
-                  <input
-                    type="date"
-                    className="input input-bordered w-full"
-                    value={formDate}
-                    onChange={(e) => setFormDate(e.target.value)}
-                  />
-                </label>
-
-                <label className="form-control w-full">
-                  <span className="label-text text-base-content/60 text-sm mb-1">Creator / Device</span>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={formCreator}
-                    onChange={(e) => setFormCreator(e.target.value)}
-                  />
-                </label>
+                <HikeFieldsForm
+                  name={formName}
+                  date={formDate}
+                  creator={formCreator}
+                  onNameChange={setFormName}
+                  onDateChange={setFormDate}
+                  onCreatorChange={setFormCreator}
+                />
               </div>
 
               <div className="divider" />
@@ -248,15 +197,9 @@ export default function TestPage() {
 
               {/* ── submit ── */}
               {submitResult ? (
-                submitResult.success ? (
-                  <div role="alert" className="alert alert-success">
-                    <span>Hike saved! ID: {submitResult.hikeId}</span>
-                  </div>
-                ) : (
-                  <div role="alert" className="alert alert-error">
-                    <span>{submitResult.error}</span>
-                  </div>
-                )
+                <div role="alert" className="alert alert-error">
+                  <span>{submitResult.error}</span>
+                </div>
               ) : (
                 <button
                   className="btn btn-primary w-full"

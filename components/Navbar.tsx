@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { createClient } from "@/utills/server";
+import { createClient } from "@/lib/supabase/server";
 import { signInWithGoogle, signOut } from "@/lib/auth";
 
 export default async function Navbar() {
@@ -18,17 +18,6 @@ export default async function Navbar() {
           className="text-base font-bold tracking-tight flex items-center gap-2"
         >
           <span className="text-primary">🥾</span> Hike Explorer
-        </Link>
-      </div>
-      <div className="flex-none hidden md:flex gap-1">
-        <Link href="#explore" className="btn btn-ghost btn-sm">
-          Explore
-        </Link>
-        <Link href="#features" className="btn btn-ghost btn-sm">
-          Features
-        </Link>
-        <Link href="#donate" className="btn btn-ghost btn-sm">
-          Donate
         </Link>
       </div>
       <div className="flex-1 flex justify-end gap-2">
@@ -50,7 +39,7 @@ export default async function Navbar() {
                 Log In
               </button>
             </form>
-            <Link href="/test" className="btn btn-primary btn-sm">
+            <Link href="/upload" className="btn btn-primary btn-sm">
               Get Started
             </Link>
           </div>

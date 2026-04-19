@@ -3,49 +3,51 @@
 import { db } from "@/db";
 import { hikes, trackPoints } from "@/db/schema";
 import type { ParsedHikePayload, UploadResult } from "@/types/hike-upload";
-import { createClient } from "@/utills/server";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/session";
+import { fireViewshed } from "@/lib/viewshed-actions";
 import { eq, and } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-async function getCurrentUser() {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
-}
+const CHUNK_SIZE = 1000;
 
 // ── actions ───────────────────────────────────────────────────────────────────
 
 export async function saveHike(
   payload: ParsedHikePayload,
+  gpxFile?: File,
 ): Promise<UploadResult> {
-  const user = await getCurrentUser();
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not authenticated" };
 
   if (payload.trackPoints.length === 0) {
     return { success: false, error: "GPX file contains no track points" };
   }
 
-  // Ensure the storage path (if provided) belongs to this user's folder
-  if (
-    payload.gpxStoragePath &&
-    !payload.gpxStoragePath.startsWith(`${user.id}/`)
-  ) {
-    return { success: false, error: "Invalid storage path" };
+  let gpxStoragePath: string | null = null;
+  if (gpxFile) {
+    const storagePath = `${user.id}/${crypto.randomUUID()}.gpx`;
+    const { error: storageError } = await supabase.storage
+      .from("gpx-files")
+      .upload(storagePath, gpxFile, { contentType: "application/gpx+xml" });
+    if (storageError) {
+      return {
+        success: false,
+        error: `Storage upload failed: ${storageError.message}`,
+      };
+    }
+    gpxStoragePath = storagePath;
   }
 
-  const userId = user.id;
   const { stats } = payload;
 
   const [hike] = await db
     .insert(hikes)
     .values({
-      user_id: userId,
+      user_id: user.id,
       name: payload.name,
       date: payload.date ?? undefined,
       bbox: payload.bbox ?? undefined,
@@ -55,7 +57,7 @@ export async function saveHike(
       duration_seconds: stats.durationSeconds ?? undefined,
       start_time: stats.startTime ? new Date(stats.startTime) : undefined,
       end_time: stats.endTime ? new Date(stats.endTime) : undefined,
-      gpx_storage_path: payload.gpxStoragePath ?? null,
+      gpx_storage_path: gpxStoragePath,
     })
     .returning({ id: hikes.id });
 
@@ -68,10 +70,12 @@ export async function saveHike(
     timestamp: pt.timestamp ? new Date(pt.timestamp) : null,
   }));
 
-  const CHUNK_SIZE = 1000;
   for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
     await db.insert(trackPoints).values(rows.slice(i, i + CHUNK_SIZE));
   }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) await fireViewshed(hike.id, session.access_token);
 
   revalidatePath("/user");
   return { success: true, hikeId: hike.id };
@@ -80,37 +84,30 @@ export async function saveHike(
 export async function deleteHike(
   hikeId: string,
 ): Promise<{ success: boolean; error?: string }> {
-  // Use one client for both auth and storage so the same session token is used
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Not authenticated" };
 
-  // Verify ownership and fetch the storage path in one query
   const [owned] = await db
     .select({ id: hikes.id, gpx_storage_path: hikes.gpx_storage_path })
     .from(hikes)
     .where(and(eq(hikes.id, hikeId), eq(hikes.user_id, user.id)))
     .limit(1);
 
-  if (!owned) {
-    return { success: false, error: "Hike not found" };
-  }
+  if (!owned) return { success: false, error: "Hike not found" };
 
-  // Remove GPX file from storage before deleting the DB record
   if (owned.gpx_storage_path) {
     const { error: storageError } = await supabase.storage
       .from("gpx-files")
       .remove([owned.gpx_storage_path]);
     if (storageError) {
-      return { success: false, error: `Failed to delete file: ${storageError.message}` };
+      return {
+        success: false,
+        error: `Failed to delete file: ${storageError.message}`,
+      };
     }
   }
-
-  // Delete child rows first — guard against DB constraints that lack ON DELETE CASCADE
-  await db.delete(trackPoints).where(eq(trackPoints.hike_id, hikeId));
 
   await db.delete(hikes).where(eq(hikes.id, hikeId));
 

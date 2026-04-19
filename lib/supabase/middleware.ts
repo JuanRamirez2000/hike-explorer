@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
+const PROTECTED_ROUTES = ["/upload", "/user", "/hike"];
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -25,11 +27,9 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // Refreshes the session cookie. Must not have any logic between
-  // createServerClient and getUser, or sessions may not refresh correctly.
+  // Must not have logic between createServerClient and getUser — sessions won't refresh.
   const { data: { user } } = await supabase.auth.getUser();
 
-  const PROTECTED_ROUTES = ["/test"];
   const isProtected = PROTECTED_ROUTES.some((route) =>
     request.nextUrl.pathname.startsWith(route),
   );

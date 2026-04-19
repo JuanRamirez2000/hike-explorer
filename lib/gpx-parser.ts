@@ -6,6 +6,7 @@ import type {
   ParsedHikePayload,
   ParsedTrackPoint,
 } from "@/types/hike-upload";
+import { haversineKm } from "@/lib/geo";
 
 function parseGPXXml(text: string): GPXJson {
   const parser = new XMLParser({
@@ -61,23 +62,6 @@ function computeElevationGainM(points: GPXPoint[]): number | null {
   return gain;
 }
 
-function haversineKm(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
 function computeDistanceKm(points: GPXPoint[]): number | null {
   if (points.length < 2) return null;
   let total = 0;
@@ -109,12 +93,18 @@ function computeStats(points: GPXPoint[], creator: string): HikeStats {
     distanceKm: computeDistanceKm(points),
     durationSeconds: computeDurationSeconds(points),
     startTime: withTime.length > 0 ? withTime[0].time! : null,
-    endTime:
-      withTime.length > 1 ? withTime[withTime.length - 1].time! : null,
+    endTime: withTime.length > 1 ? withTime[withTime.length - 1].time! : null,
   };
 }
 
-export async function getGPXMetadata(file: File): Promise<GPXMetadataSummary> {
+// Shared parsing logic — reads the file once and returns everything downstream needs
+async function parseGPXFile(file: File): Promise<{
+  gpxJson: GPXJson;
+  points: GPXPoint[];
+  name: string;
+  date: string | null;
+  creator: string;
+}> {
   const text = await file.text();
   const gpxJson = parseGPXXml(text);
   const points = extractTrackPoints(gpxJson);
@@ -127,15 +117,20 @@ export async function getGPXMetadata(file: File): Promise<GPXMetadataSummary> {
 
   const rawDate = gpx.metadata?.time ?? points[0]?.time;
   const date = rawDate ? new Date(rawDate).toISOString().split("T")[0] : null;
-
   const creator = gpx["@_creator"] ?? "Unknown";
+
+  return { gpxJson, points, name, date, creator };
+}
+
+export async function getGPXMetadata(file: File): Promise<GPXMetadataSummary> {
+  const { gpxJson, points, name, date, creator } = await parseGPXFile(file);
   const stats = computeStats(points, creator);
 
   return {
     name,
     date,
     creator,
-    trackCount: gpx.trk?.length ?? 0,
+    trackCount: gpxJson.gpx.trk?.length ?? 0,
     totalPoints: points.length,
     bbox: computeBbox(points),
     elevationGainM: stats.elevationGainM,
@@ -147,22 +142,9 @@ export async function getGPXMetadata(file: File): Promise<GPXMetadataSummary> {
 }
 
 export async function buildHikePayload(file: File): Promise<ParsedHikePayload> {
-  const text = await file.text();
-  const gpxJson = parseGPXXml(text);
-  const points = extractTrackPoints(gpxJson);
-  const gpx = gpxJson.gpx;
+  const { points, name, date, creator } = await parseGPXFile(file);
 
-  const name =
-    gpx.metadata?.name ??
-    gpx.trk?.[0]?.name ??
-    file.name.replace(/\.gpx$/i, "");
-
-  const rawDate = gpx.metadata?.time ?? points[0]?.time;
-  const date = rawDate ? new Date(rawDate).toISOString().split("T")[0] : null;
-
-  const creator = gpx["@_creator"] ?? "Unknown";
-
-  const trackPoints: ParsedTrackPoint[] = points.map((pt) => ({
+  const parsedTrackPoints: ParsedTrackPoint[] = points.map((pt) => ({
     lat: pt["@_lat"],
     lng: pt["@_lon"],
     elevation: pt.ele ?? 0,
@@ -173,7 +155,7 @@ export async function buildHikePayload(file: File): Promise<ParsedHikePayload> {
     name,
     date,
     bbox: computeBbox(points),
-    trackPoints,
+    trackPoints: parsedTrackPoints,
     stats: computeStats(points, creator),
   };
 }
