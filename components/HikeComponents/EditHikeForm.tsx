@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import HikeFieldsForm from "@/components/HikeComponents/HikeFieldsForm";
 
 interface EditHikeFormProps {
   initialName: string;
@@ -47,39 +48,15 @@ export default function EditHikeForm({
 
   return (
     <div className="space-y-3">
-      <label className="form-control w-full">
-        <span className="label-text text-xs text-base-content/60 mb-1">
-          Name
-        </span>
-        <input
-          type="text"
-          className="input input-bordered input-sm w-full"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </label>
-      <label className="form-control w-full">
-        <span className="label-text text-xs text-base-content/60 mb-1">
-          Date
-        </span>
-        <input
-          type="date"
-          className="input input-bordered input-sm w-full"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-      </label>
-      <label className="form-control w-full">
-        <span className="label-text text-xs text-base-content/60 mb-1">
-          Creator / Device
-        </span>
-        <input
-          type="text"
-          className="input input-bordered input-sm w-full"
-          value={creator}
-          onChange={(e) => setCreator(e.target.value)}
-        />
-      </label>
+      <HikeFieldsForm
+        name={name}
+        date={date}
+        creator={creator}
+        onNameChange={setName}
+        onDateChange={setDate}
+        onCreatorChange={setCreator}
+        compact
+      />
 
       {displayError && <p className="text-error text-sm">{displayError}</p>}
 

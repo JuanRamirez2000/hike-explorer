@@ -1,7 +1,5 @@
-import { sql } from "drizzle-orm";
 import {
   bigserial,
-  check,
   date,
   doublePrecision,
   integer,
@@ -70,12 +68,6 @@ export const hikes = pgTable(
     fog_geojson: jsonb("fog_geojson"),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
-  (table) => [
-    check(
-      "fog_status_check",
-      sql`${table.fog_status} in ('pending', 'processing', 'complete', 'error')`
-    ),
-  ]
 );
 
 // Individual rows (not JSONB array) so track points can be streamed during viewshed computation

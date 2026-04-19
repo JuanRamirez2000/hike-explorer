@@ -1,7 +1,7 @@
 import { fmtDistance, fmtDuration, fmtElevation, type UnitSystem } from "@/lib/format";
 import type { Hike, TrackPointSummary } from "@/types/models";
-import ElevationProfileChart from "@/components/HikeComponents/ElevationProfileChart";
-import PaceChart from "@/components/HikeComponents/PaceChart";
+import StatRow from "@/components/StatRow";
+import HikeCharts from "@/components/HikeComponents/HikeCharts";
 
 export default function HikeInfoCard({
   hike,
@@ -27,54 +27,26 @@ export default function HikeInfoCard({
 
         <table className="table table-xs w-full">
           <tbody>
-            <tr>
-              <td className="text-base-content/60 pl-0">Distance</td>
-              <td className="text-right pr-0 font-medium">
-                {hike.distance_km !== null
-                  ? fmtDistance(hike.distance_km, unit)
-                  : "—"}
-              </td>
-            </tr>
-            <tr>
-              <td className="text-base-content/60 pl-0">Elev. gain</td>
-              <td className="text-right pr-0 font-medium">
-                {hike.elevation_gain_m !== null
-                  ? fmtElevation(hike.elevation_gain_m, unit)
-                  : "—"}
-              </td>
-            </tr>
-            <tr>
-              <td className="text-base-content/60 pl-0">Duration</td>
-              <td className="text-right pr-0 font-medium">
-                {fmtDuration(hike.duration_seconds)}
-              </td>
-            </tr>
-            <tr>
-              <td className="text-base-content/60 pl-0">Start</td>
-              <td className="text-right pr-0 font-medium">
-                {hike.start_time
-                  ? new Date(hike.start_time).toLocaleString()
-                  : "—"}
-              </td>
-            </tr>
+            <StatRow
+              label="Distance"
+              value={hike.distance_km !== null ? fmtDistance(hike.distance_km, unit) : "—"}
+            />
+            <StatRow
+              label="Elev. gain"
+              value={hike.elevation_gain_m !== null ? fmtElevation(hike.elevation_gain_m, unit) : "—"}
+            />
+            <StatRow label="Duration" value={fmtDuration(hike.duration_seconds)} />
+            <StatRow
+              label="Start"
+              value={hike.start_time ? new Date(hike.start_time).toLocaleString() : "—"}
+            />
           </tbody>
         </table>
 
         {trackPoints.length >= 2 && (
           <>
             <div className="divider my-0" />
-            <div>
-              <p className="text-xs text-base-content/50 mb-1">Elevation</p>
-              <ElevationProfileChart
-                trackPoints={trackPoints}
-                unit={unit}
-                height={90}
-              />
-            </div>
-            <div>
-              <p className="text-xs text-base-content/50 mb-1">Pace</p>
-              <PaceChart trackPoints={trackPoints} unit={unit} height={80} />
-            </div>
+            <HikeCharts trackPoints={trackPoints} unit={unit} elevationHeight={90} paceHeight={80} />
           </>
         )}
       </div>

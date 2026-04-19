@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useId, useMemo, useSyncExternalStore } from "react";
 import {
   AreaChart,
   Area,
@@ -9,7 +9,7 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-import { haversineKm, downsamplePoints, CHART_MAX_POINTS } from "@/lib/geo";
+import { cumulativeDistancesKm, downsamplePoints, CHART_MAX_POINTS } from "@/lib/geo";
 import type { TrackPointSummary } from "@/types/models";
 import { KM_TO_MI, M_TO_FT, type UnitSystem } from "@/lib/format";
 
@@ -25,28 +25,16 @@ export default function ElevationProfileChart({
   height = 120,
 }: Props) {
   const gradId = useId();
-  // Defer render until client to avoid recharts SSR issues
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
   const data = useMemo(() => {
     if (trackPoints.length < 2) return [];
     const sampled = downsamplePoints(trackPoints, CHART_MAX_POINTS);
-    let cumKm = 0;
-    return sampled.map((pt, i) => {
-      if (i > 0) {
-        const prev = sampled[i - 1];
-        cumKm += haversineKm(prev.lat, prev.lng, pt.lat, pt.lng);
-      }
-      const dist = parseFloat(
-        (unit === "imperial" ? cumKm * KM_TO_MI : cumKm).toFixed(2),
-      );
-      const elev =
-        unit === "imperial"
-          ? Math.round(pt.elevation * M_TO_FT)
-          : Math.round(pt.elevation);
-      return { dist, elev };
-    });
+    const cumKms = cumulativeDistancesKm(sampled);
+    return sampled.map((pt, i) => ({
+      dist: parseFloat((unit === "imperial" ? cumKms[i] * KM_TO_MI : cumKms[i]).toFixed(2)),
+      elev: unit === "imperial" ? Math.round(pt.elevation * M_TO_FT) : Math.round(pt.elevation),
+    }));
   }, [trackPoints, unit]);
 
   if (!mounted || data.length < 2)

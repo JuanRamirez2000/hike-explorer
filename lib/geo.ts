@@ -66,6 +66,14 @@ export function rdpDecimate<T extends { lat: number; lng: number }>(
 // Maximum data points passed to recharts — keeps render fast for long hikes
 export const CHART_MAX_POINTS = 300;
 
+export function cumulativeDistancesKm(pts: { lat: number; lng: number }[]): number[] {
+  const result: number[] = [0];
+  for (let i = 1; i < pts.length; i++) {
+    result.push(result[i - 1] + haversineKm(pts[i - 1].lat, pts[i - 1].lng, pts[i].lat, pts[i].lng));
+  }
+  return result;
+}
+
 export function downsamplePoints<T>(arr: T[], max: number): T[] {
   if (arr.length <= max) return arr;
   const step = arr.length / max;

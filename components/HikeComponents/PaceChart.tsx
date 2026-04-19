@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import {
   LineChart,
   Line,
@@ -10,7 +10,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-import { haversineKm, downsamplePoints, CHART_MAX_POINTS } from "@/lib/geo";
+import { cumulativeDistancesKm, haversineKm, downsamplePoints, CHART_MAX_POINTS } from "@/lib/geo";
 import type { TrackPointSummary } from "@/types/models";
 import { KM_TO_MI, MI_TO_KM, type UnitSystem } from "@/lib/format";
 
@@ -44,29 +44,20 @@ interface Props {
 }
 
 export default function PaceChart({ trackPoints, unit = "metric", height = 100 }: Props) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
   const data = useMemo(() => {
     if (trackPoints.length < 2) return null;
     if (!trackPoints.some((p) => p.timestamp)) return null;
 
     const sampled = downsamplePoints(trackPoints, CHART_MAX_POINTS);
-    let cumKm = 0;
-    const rawPaces: (number | null)[] = [];
-    const dists: number[] = [];
+    const dists = cumulativeDistancesKm(sampled);
+    const rawPaces: (number | null)[] = [null];
 
-    for (let i = 0; i < sampled.length; i++) {
-      if (i === 0) {
-        rawPaces.push(null);
-        dists.push(0);
-        continue;
-      }
+    for (let i = 1; i < sampled.length; i++) {
       const prev = sampled[i - 1];
       const curr = sampled[i];
       const segKm = haversineKm(prev.lat, prev.lng, curr.lat, curr.lng);
-      cumKm += segKm;
-      dists.push(cumKm);
 
       if (prev.timestamp && curr.timestamp && segKm > 0.001) {
         const dtMin =

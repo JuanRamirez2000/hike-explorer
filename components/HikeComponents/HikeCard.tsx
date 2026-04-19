@@ -8,8 +8,7 @@ import { useState } from "react";
 import DeleteHikeModal from "@/components/HikeComponents/DeleteHikeModal";
 import EditHikeForm from "@/components/HikeComponents/EditHikeForm";
 import StatRow from "@/components/StatRow";
-import ElevationProfileChart from "@/components/HikeComponents/ElevationProfileChart";
-import PaceChart from "@/components/HikeComponents/PaceChart";
+import HikeCharts from "@/components/HikeComponents/HikeCharts";
 
 export default function HikeCard({
   hike,
@@ -121,7 +120,6 @@ export default function HikeCard({
 
             {trackPoints.length >= 2 && (
               <div className="space-y-3">
-                {/* unit toggle shared by both charts */}
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-base-content/50">Charts</p>
                   <div className="join">
@@ -139,26 +137,7 @@ export default function HikeCard({
                     </button>
                   </div>
                 </div>
-
-                <div>
-                  <p className="text-xs text-base-content/50 mb-1">
-                    Elevation
-                  </p>
-                  <ElevationProfileChart
-                    trackPoints={trackPoints}
-                    unit={unit}
-                    height={110}
-                  />
-                </div>
-
-                <div>
-                  <p className="text-xs text-base-content/50 mb-1">Pace</p>
-                  <PaceChart
-                    trackPoints={trackPoints}
-                    unit={unit}
-                    height={90}
-                  />
-                </div>
+                <HikeCharts trackPoints={trackPoints} unit={unit} />
               </div>
             )}
 

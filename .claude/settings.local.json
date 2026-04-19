@@ -36,7 +36,9 @@
       "Bash(pnpm exec:*)",
       "Bash(npm --version)",
       "mcp__ide__getDiagnostics",
-      "Bash(ls *)"
+      "Bash(ls *)",
+      "Bash(xargs -0 wc -l)",
+      "Bash(xargs wc *)"
     ]
   }
 }

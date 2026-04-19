@@ -7,6 +7,7 @@ import type { GPXMetadataSummary } from "@/types/hike-upload";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import StatRow from "@/components/StatRow";
+import HikeFieldsForm from "@/components/HikeComponents/HikeFieldsForm";
 
 // ── page ─────────────────────────────────────────────────────────────────────
 
@@ -118,36 +119,14 @@ export default function UploadPage() {
               {/* ── editable fields ── */}
               <div className="space-y-3">
                 <h2 className="font-semibold text-lg">Hike Details</h2>
-
-                <label className="form-control w-full">
-                  <span className="label-text text-base-content/60 text-sm mb-1">Name</span>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                  />
-                </label>
-
-                <label className="form-control w-full">
-                  <span className="label-text text-base-content/60 text-sm mb-1">Date</span>
-                  <input
-                    type="date"
-                    className="input input-bordered w-full"
-                    value={formDate}
-                    onChange={(e) => setFormDate(e.target.value)}
-                  />
-                </label>
-
-                <label className="form-control w-full">
-                  <span className="label-text text-base-content/60 text-sm mb-1">Creator / Device</span>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={formCreator}
-                    onChange={(e) => setFormCreator(e.target.value)}
-                  />
-                </label>
+                <HikeFieldsForm
+                  name={formName}
+                  date={formDate}
+                  creator={formCreator}
+                  onNameChange={setFormName}
+                  onDateChange={setFormDate}
+                  onCreatorChange={setFormCreator}
+                />
               </div>
 
               <div className="divider" />
