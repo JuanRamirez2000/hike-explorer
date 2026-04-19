@@ -29,14 +29,16 @@ export default function ElevationProfileChart({
   const gradId = useId();
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
-  const data = useMemo(() => {
-    if (trackPoints.length < 2) return [];
+  const { data, minElev, maxElev } = useMemo(() => {
+    if (trackPoints.length < 2) return { data: [], minElev: 0, maxElev: 100 };
     const sampled = downsamplePoints(trackPoints, CHART_MAX_POINTS);
     const cumKms = cumulativeDistancesKm(sampled);
-    return sampled.map((pt, i) => ({
+    const pts = sampled.map((pt, i) => ({
       dist: parseFloat(convertDistance(cumKms[i], unit).toFixed(2)),
       elev: Math.round(convertElevation(pt.elevation, unit)),
     }));
+    const elevs = pts.map((p) => p.elev);
+    return { data: pts, minElev: Math.min(...elevs), maxElev: Math.max(...elevs) };
   }, [trackPoints, unit]);
 
   if (!mounted || data.length < 2)
@@ -49,6 +51,8 @@ export default function ElevationProfileChart({
 
   const distUnit = unit === "imperial" ? "mi" : "km";
   const elevUnit = unit === "imperial" ? "ft" : "m";
+  const elevPad  = Math.max(10, Math.round((maxElev - minElev) * 0.05));
+  const yDomain: [number, number] = [minElev - elevPad, maxElev + elevPad];
 
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -77,6 +81,7 @@ export default function ElevationProfileChart({
           axisLine={false}
           tickFormatter={(v) => `${v}${elevUnit}`}
           width={38}
+          domain={yDomain}
         />
         <Tooltip
           formatter={(v) => [`${v} ${elevUnit}`, "Elevation"]}

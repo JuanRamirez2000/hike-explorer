@@ -6,10 +6,46 @@ import { fmtDuration, fmtDistance, fmtElevation, type UnitSystem } from "@/lib/f
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import DeleteHikeModal from "@/components/HikeComponents/DeleteHikeModal";
 import EditHikeForm from "@/components/HikeComponents/EditHikeForm";
 import StatRow from "@/components/StatRow";
 import HikeCharts from "@/components/HikeComponents/HikeCharts";
+
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
+
+function buildMinimapUrl(
+  trackPoints: TrackPointSummary[],
+  bbox: number[] | null,
+  width = 600,
+  height = 320,
+): string {
+  if (!MAPBOX_TOKEN) return "";
+  const base = "https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static";
+
+  if (trackPoints.length >= 2) {
+    const step = Math.max(1, Math.floor(trackPoints.length / 60));
+    const pts = trackPoints.filter((_, i) => i % step === 0);
+    if (pts[pts.length - 1] !== trackPoints[trackPoints.length - 1]) {
+      pts.push(trackPoints[trackPoints.length - 1]);
+    }
+    const geojson = JSON.stringify({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: pts.map((p) => [p.lng, p.lat]) },
+      properties: { stroke: "#f97316", "stroke-width": 3, "stroke-opacity": 0.9 },
+    });
+    return `${base}/geojson(${encodeURIComponent(geojson)})/auto/${width}x${height}?padding=30&access_token=${MAPBOX_TOKEN}`;
+  }
+
+  if (bbox && bbox.length === 4) {
+    const [minLng, minLat, maxLng, maxLat] = bbox;
+    const lng = ((minLng + maxLng) / 2).toFixed(4);
+    const lat = ((minLat + maxLat) / 2).toFixed(4);
+    return `${base}/${lng},${lat},10,0/${width}x${height}?access_token=${MAPBOX_TOKEN}`;
+  }
+
+  return "";
+}
 
 export default function HikeCard({
   hike,
@@ -59,8 +95,22 @@ export default function HikeCard({
     setBusy(false);
   }
 
+  const minimapUrl = buildMinimapUrl(trackPoints, hike.bbox);
+
   return (
-    <div className="card bg-base-100 border border-base-300 shadow-sm">
+    <div className="card bg-base-100 border border-base-300 shadow-sm overflow-hidden">
+      {minimapUrl && !editing && (
+        <div className="relative w-full" style={{ height: 160 }}>
+          <Image
+            src={minimapUrl}
+            alt={`Map thumbnail for ${hike.name}`}
+            fill
+            sizes="(max-width: 768px) 100vw, 400px"
+            className="object-cover"
+            unoptimized
+          />
+        </div>
+      )}
       <div className="card-body gap-3 p-5">
         {editing ? (
           <EditHikeForm
