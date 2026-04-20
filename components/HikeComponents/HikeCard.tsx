@@ -2,14 +2,13 @@
 
 import { deleteHike, updateHike } from "@/lib/hike-actions";
 import type { Hike, TrackPointSummary } from "@/types/models";
-import { fmtDuration, fmtDistance, fmtElevation, type UnitSystem } from "@/lib/format";
+import { fmtDuration, fmtDistance, fmtElevation, MI_TO_KM, type UnitSystem } from "@/lib/format";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import DeleteHikeModal from "@/components/HikeComponents/DeleteHikeModal";
 import EditHikeForm from "@/components/HikeComponents/EditHikeForm";
-import StatRow from "@/components/StatRow";
 import HikeCharts from "@/components/HikeComponents/HikeCharts";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
@@ -45,6 +44,20 @@ function buildMinimapUrl(
   }
 
   return "";
+}
+
+function fmtAvgPace(
+  durationSeconds: number | null,
+  distanceKm: number | null,
+  unit: UnitSystem,
+): string {
+  if (durationSeconds === null || distanceKm === null || distanceKm === 0) return "—";
+  const minPerKm = durationSeconds / 60 / distanceKm;
+  const pace = unit === "imperial" ? minPerKm * MI_TO_KM : minPerKm;
+  const totalSeconds = Math.round(pace * 60);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")} /${unit === "imperial" ? "mi" : "km"}`;
 }
 
 export default function HikeCard({
@@ -99,6 +112,9 @@ export default function HikeCard({
 
   return (
     <div className="card bg-base-100 border border-base-300 shadow-sm overflow-hidden">
+      {/* TODO: Map thumbnail — render a static mini-map preview using a Mapbox Static Image
+          API URL (bbox from hike.bbox). Requires exposing NEXT_PUBLIC_MAPBOX_TOKEN client-side
+          and deciding on image dimensions. Deferred: needs Static Images API integration. */}
       {minimapUrl && !editing && (
         <div className="relative w-full" style={{ height: 160 }}>
           <Image
@@ -111,6 +127,7 @@ export default function HikeCard({
           />
         </div>
       )}
+
       <div className="card-body gap-3 p-5">
         {editing ? (
           <EditHikeForm
@@ -127,52 +144,56 @@ export default function HikeCard({
           />
         ) : (
           <>
+            {/* Badges row */}
+            <div className="flex flex-wrap gap-1.5">
+              {/* TODO: Difficulty badge — auto-compute from elevation_gain_m / distance_km ratio.
+                  Deferred: needs an agreed difficulty scale and thresholds defined. */}
+              {/* TODO: Route type badge (out-and-back vs loop) — compare start/end track point
+                  proximity. Deferred: requires trackPoints being passed to the card. */}
+              {/* TODO: Fog coverage pill — show "XX% explored" badge derived from fog_geojson area
+                  vs hike bbox area. Deferred: requires a client-side area computation (turf.js) and
+                  fog_geojson being passed down to this card. */}
+            </div>
+
+            {/* Hike name + subtitle */}
             <div>
-              <h2 className="card-title text-base leading-tight">
-                {hike.name}
-              </h2>
+              <h2 className="card-title text-base leading-tight">{hike.name}</h2>
               <p className="text-sm text-base-content/50">
                 {hike.date ?? "No date"} · {hike.creator ?? "Unknown device"}
               </p>
             </div>
 
-            <table className="table table-xs w-full">
-              <tbody>
-                <StatRow
-                  label="Distance"
-                  value={
-                    hike.distance_km !== null
-                      ? fmtDistance(hike.distance_km, unit)
-                      : "—"
-                  }
-                />
-                <StatRow
-                  label="Elev. gain"
-                  value={
-                    hike.elevation_gain_m !== null
-                      ? fmtElevation(hike.elevation_gain_m, unit)
-                      : "—"
-                  }
-                />
-                <StatRow
-                  label="Duration"
-                  value={fmtDuration(hike.duration_seconds)}
-                />
-                <StatRow
-                  label="Start"
-                  value={
-                    hike.start_time
-                      ? new Date(hike.start_time).toLocaleString()
-                      : "—"
-                  }
-                />
-              </tbody>
-            </table>
+            {/* 2×2 stat grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-base-content/50">Distance</p>
+                <p className="text-sm font-medium">
+                  {hike.distance_km !== null ? fmtDistance(hike.distance_km, unit) : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-base-content/50">Elev. gain</p>
+                <p className="text-sm font-medium">
+                  {hike.elevation_gain_m !== null ? fmtElevation(hike.elevation_gain_m, unit) : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-base-content/50">Duration</p>
+                <p className="text-sm font-medium">{fmtDuration(hike.duration_seconds)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-base-content/50">Avg pace</p>
+                <p className="text-sm font-medium">
+                  {fmtAvgPace(hike.duration_seconds, hike.distance_km, unit)}
+                </p>
+              </div>
+            </div>
 
+            {/* Elevation sparkline */}
             {trackPoints.length >= 2 && (
-              <div className="space-y-3">
+              <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-base-content/50">Charts</p>
+                  <p className="text-xs text-base-content/50">Elevation</p>
                   <div className="join">
                     <button
                       className={`join-item btn btn-xs ${unit === "metric" ? "btn-neutral" : "btn-ghost"}`}
@@ -188,32 +209,97 @@ export default function HikeCard({
                     </button>
                   </div>
                 </div>
-                <HikeCharts trackPoints={trackPoints} unit={unit} />
+                <HikeCharts
+                  trackPoints={trackPoints}
+                  unit={unit}
+                  elevationHeight={56}
+                  paceHeight={0}
+                />
               </div>
             )}
 
             {error && <p className="text-error text-sm">{error}</p>}
 
-            <div className="card-actions justify-end pt-1">
+            {/* Action row */}
+            <div className="flex items-center gap-1 pt-1">
               <Link
                 href={`/hike/${hike.id}/map`}
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm flex-1"
               >
-                View on Map
+                Open map
               </Link>
+
+              {/* TODO: Share button — generate a shareable link or export modal.
+                  Deferred: sharing feature not yet designed. */}
               <button
-                className="btn btn-ghost btn-sm"
+                className="btn btn-ghost btn-square btn-sm"
+                title="Share"
+                disabled
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="18" cy="5" r="3" />
+                  <circle cx="6" cy="12" r="3" />
+                  <circle cx="18" cy="19" r="3" />
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                </svg>
+              </button>
+
+              <button
+                className="btn btn-ghost btn-square btn-sm"
+                title="Edit"
                 onClick={() => setEditing(true)}
                 disabled={busy}
               >
-                Edit
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
               </button>
+
               <button
-                className="btn btn-error btn-sm btn-outline"
+                className="btn btn-ghost btn-square btn-sm text-error"
+                title="Delete"
                 onClick={() => setShowDeleteModal(true)}
                 disabled={busy}
               >
-                Delete
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6" />
+                  <path d="M14 11v6" />
+                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                </svg>
               </button>
             </div>
           </>

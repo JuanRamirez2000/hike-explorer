@@ -5,7 +5,7 @@ import ReactMap, { type MapRef } from "react-map-gl/mapbox";
 import DeckGL from "@deck.gl/react";
 import { PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import type { MapViewState } from "@deck.gl/core";
-import type { FeatureCollection } from "geojson";
+import type { FeatureCollection, Polygon } from "geojson";
 import type { Hike, TrackPointSummary } from "@/types/models";
 import { haversineKm, cumulativeDistancesKm, rdpDecimate } from "@/lib/geo";
 import { lerpColor } from "@/lib/display-utils";
@@ -22,6 +22,7 @@ import type { ViewshedProgress } from "@/lib/viewshed";
 import type { ViewshedStatus } from "@/types/viewshed";
 import { saveViewshed } from "@/lib/viewshed-actions";
 import HikeInfoCard from "./HikeInfoCard";
+import MapControlsPanel from "./MapControlsPanel";
 
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -203,6 +204,27 @@ function buildDistanceMarkers(pts: TrackPointSummary[], unit: UnitSystem) {
 }
 
 
+// Shoelace area for a GeoJSON FeatureCollection of Polygons, returns km²
+function geojsonAreaKm2(fc: FeatureCollection): number {
+  let totalM2 = 0;
+  for (const feature of fc.features) {
+    const geom = feature.geometry;
+    if (geom.type !== "Polygon") continue;
+    for (const ring of (geom as Polygon).coordinates) {
+      const midLat = ring.reduce((s, c) => s + c[1], 0) / ring.length;
+      const latM = 111_320;
+      const lngM = 111_320 * Math.cos((midLat * Math.PI) / 180);
+      let a = 0;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        a += ring[j][0] * lngM * (ring[i][1] * latM);
+        a -= ring[i][0] * lngM * (ring[j][1] * latM);
+      }
+      totalM2 += Math.abs(a) / 2;
+    }
+  }
+  return totalM2 / 1_000_000;
+}
+
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function HikeMapView({
@@ -219,6 +241,11 @@ export default function HikeMapView({
   const [terrainExp, setTerrainExp] = useState(TERRAIN_EXAGGERATION_DEFAULT);
   const [colorMode, setColorMode] = useState<ColorMode>("default");
   const [unit, setUnit] = useState<UnitSystem>("metric");
+  const [fogVisible, setFogVisible] = useState(true);
+  const [fogOpacity, setFogOpacity] = useState(0.65);
+  const [terrainEnabled, setTerrainEnabled] = useState(true);
+  const [fogComputedAt, setFogComputedAt] = useState<Date | null>(null);
+  const [fogObserverCount, setFogObserverCount] = useState<number | null>(null);
 
   // ── viewshed state ───────────────────────────────────────────────────────
 
@@ -257,6 +284,9 @@ export default function HikeMapView({
   const viewshedDataRef = useRef(viewshedData);
   const viewshedVisibleRef = useRef(viewshedVisible);
   const viewshedSmoothRef = useRef(viewshedSmooth);
+  const fogVisibleRef = useRef(fogVisible);
+  const fogOpacityRef = useRef(fogOpacity);
+  const terrainEnabledRef = useRef(terrainEnabled);
   useEffect(() => {
     terrainExpRef.current = terrainExp;
   });
@@ -268,6 +298,15 @@ export default function HikeMapView({
   });
   useEffect(() => {
     viewshedSmoothRef.current = viewshedSmooth;
+  });
+  useEffect(() => {
+    fogVisibleRef.current = fogVisible;
+  });
+  useEffect(() => {
+    fogOpacityRef.current = fogOpacity;
+  });
+  useEffect(() => {
+    terrainEnabledRef.current = terrainEnabled;
   });
 
   // ── terrain helpers ──────────────────────────────────────────────────────
@@ -282,10 +321,9 @@ export default function HikeMapView({
         maxzoom: 14,
       });
     }
-    map.setTerrain({
-      source: "mapbox-dem",
-      exaggeration: terrainExpRef.current,
-    });
+    if (terrainEnabledRef.current) {
+      map.setTerrain({ source: "mapbox-dem", exaggeration: terrainExpRef.current });
+    }
     if (!map.getLayer("sky")) {
       map.addLayer({
         id: "sky",
@@ -354,17 +392,7 @@ export default function HikeMapView({
         source: "viewshed",
         paint: {
           "fill-color": "#1e3a8a",
-          "fill-opacity": [
-            "interpolate",
-            ["linear"],
-            ["coalesce", ["get", "dist"], 750],
-            0,
-            0.78,
-            750,
-            0.5,
-            1500,
-            0.15,
-          ],
+          "fill-opacity": fogVisibleRef.current ? fogOpacityRef.current : 0,
         },
       });
     }
@@ -390,12 +418,23 @@ export default function HikeMapView({
     syncViewshedLayer(map);
   }, [viewshedData, viewshedVisible, viewshedSmooth, syncViewshedLayer]);
 
-  // Live-update terrain exaggeration without waiting for a style reload
+  // Live-update fill-opacity without re-building the layer (efficient for slider)
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map?.getLayer("viewshed-fill")) return;
+    map.setPaintProperty("viewshed-fill", "fill-opacity", fogVisible ? fogOpacity : 0);
+  }, [fogVisible, fogOpacity]);
+
+  // Live-update terrain exaggeration / enabled without waiting for a style reload
   useEffect(() => {
     const map = mapRef.current?.getMap();
     if (!map?.getSource("mapbox-dem")) return;
-    map.setTerrain({ source: "mapbox-dem", exaggeration: terrainExp });
-  }, [terrainExp]);
+    if (terrainEnabled) {
+      map.setTerrain({ source: "mapbox-dem", exaggeration: terrainExp });
+    } else {
+      map.setTerrain(null);
+    }
+  }, [terrainEnabled, terrainExp]);
 
   // ── viewshed computation ──────────────────────────────────────────────────
 
@@ -474,6 +513,8 @@ export default function HikeMapView({
     setViewshedData(geojson);
     setViewshedStatus("done");
     setViewshedVisible(true);
+    setFogComputedAt(new Date());
+    setFogObserverCount(observers.length);
 
     // Persist in the background — don't block the UI
     saveViewshed(hike.id, geojson).catch(console.error);
@@ -622,6 +663,19 @@ export default function HikeMapView({
     distMarkers,
   ]);
 
+  // ── derived values for child components ─────────────────────────────────
+
+  const fogAreaKm2 = viewshedData !== null ? geojsonAreaKm2(viewshedData) : null;
+
+  const fogStatus: "pending" | "processing" | "complete" | "error" | null =
+    viewshedStatus === "idle"
+      ? null
+      : viewshedStatus === "computing"
+        ? "processing"
+        : viewshedStatus === "done"
+          ? "complete"
+          : "error";
+
   // ── render ────────────────────────────────────────────────────────────────
 
   return (
@@ -632,157 +686,40 @@ export default function HikeMapView({
         height: "calc(100vh - 4rem)",
       }}
     >
-      <HikeInfoCard hike={hike} trackPoints={trackPoints} unit={unit} />
+      <HikeInfoCard
+        hike={hike}
+        trackPoints={trackPoints}
+        unit={unit}
+        fogStatus={fogStatus}
+        fogAreaKm2={fogAreaKm2}
+      />
 
-      {/* ── controls panel ── */}
-      <div
-        className="absolute top-4 right-4 z-30 flex flex-col gap-2 overflow-y-auto"
-        style={{ maxHeight: "calc(100% - 2rem)" }}
-      >
-        {/* map style */}
-        <div className="join shadow-lg">
-          {(["outdoors", "satellite", "hybrid"] as const).map((s) => (
-            <button
-              key={s}
-              className={`join-item btn btn-xs ${mapStyle === s ? "btn-neutral" : "btn-ghost bg-base-100/90"}`}
-              onClick={() => setMapStyle(s)}
-            >
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        {/* path color mode */}
-        <div className="join shadow-lg">
-          {(["default", "elevation", "pace"] as const).map((m) => (
-            <button
-              key={m}
-              className={`join-item btn btn-xs ${colorMode === m ? "btn-neutral" : "btn-ghost bg-base-100/90"}`}
-              onClick={() => setColorMode(m)}
-              disabled={m === "pace" && !hasPace}
-              title={
-                m === "pace" && !hasPace ? "No timestamps in GPX" : undefined
-              }
-            >
-              {m === "default"
-                ? "Track"
-                : m.charAt(0).toUpperCase() + m.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        {/* unit toggle + fit */}
-        <div className="flex gap-2">
-          <div className="join shadow-lg flex-1">
-            {(["metric", "imperial"] as const).map((u) => (
-              <button
-                key={u}
-                className={`join-item btn btn-xs flex-1 ${unit === u ? "btn-neutral" : "btn-ghost bg-base-100/90"}`}
-                onClick={() => setUnit(u)}
-              >
-                {u === "metric" ? "km" : "mi"}
-              </button>
-            ))}
-          </div>
-          <button
-            className="btn btn-xs bg-base-100/90 shadow-lg"
-            onClick={handleFitRoute}
-            title="Fit route"
-          >
-            Fit
-          </button>
-        </div>
-
-        {/* terrain exaggeration slider */}
-        <div className="flex items-center gap-2 bg-base-100/90 shadow-lg rounded-lg px-3 py-2">
-          <span className="text-xs text-base-content/60 shrink-0">3D</span>
-          <input
-            type="range"
-            min={1}
-            max={3}
-            step={0.1}
-            value={terrainExp}
-            onChange={(e) => setTerrainExp(Number(e.target.value))}
-            className="range range-xs flex-1"
-          />
-          <span className="text-xs text-base-content/60 w-7 shrink-0 text-right">
-            {terrainExp.toFixed(1)}×
-          </span>
-        </div>
-
-        {/* viewshed controls */}
-        <div className="flex flex-col gap-1.5 bg-base-100/90 shadow-lg rounded-lg px-3 py-2 min-w-[168px]">
-          <span className="text-xs font-medium text-base-content/80">Viewshed</span>
-
-          {/* progress bar — only while computing */}
-          {viewshedStatus === "computing" && (
-            <div className="flex items-center gap-2">
-              <progress
-                className="progress progress-success flex-1"
-                value={viewshedProgress.pct}
-                max={100}
-              />
-              <span className="text-xs text-base-content/60 shrink-0 w-8 text-right">
-                {Math.round(viewshedProgress.pct)}%
-              </span>
-            </div>
-          )}
-
-          {/* error message */}
-          {viewshedStatus === "error" && (
-            <p className="text-xs text-error leading-tight">{viewshedError}</p>
-          )}
-
-          {/* show / hide — visible once computed */}
-          <div className="join w-full">
-            <button
-              className={`join-item btn btn-xs flex-1 ${viewshedVisible && viewshedStatus === "done" ? "btn-success" : "btn-ghost"}`}
-              onClick={() => setViewshedVisible((v) => !v)}
-              disabled={viewshedStatus !== "done"}
-            >
-              {viewshedVisible && viewshedStatus === "done" ? "Hide" : "Show"}
-            </button>
-            <button
-              className={`join-item btn btn-xs flex-1 ${!viewshedSmooth ? "btn-neutral" : "btn-ghost"}`}
-              onClick={() => setViewshedSmooth(false)}
-              disabled={viewshedStatus !== "done"}
-            >
-              Grid
-            </button>
-            <button
-              className={`join-item btn btn-xs flex-1 ${viewshedSmooth ? "btn-neutral" : "btn-ghost"}`}
-              onClick={() => setViewshedSmooth(true)}
-              disabled={viewshedStatus !== "done"}
-            >
-              Smooth
-            </button>
-          </div>
-
-          {/* terrain preset */}
-          <div className="join w-full">
-            {(["canyon", "trail", "peak"] as const).map((p) => (
-              <button
-                key={p}
-                className={`join-item btn btn-xs flex-1 ${viewshedPreset === p ? "btn-neutral" : "btn-ghost"}`}
-                onClick={() => setViewshedPreset(p)}
-                disabled={viewshedStatus === "computing"}
-                title={p === "canyon" ? "5 km radius" : p === "trail" ? "20 km radius" : "50 km radius"}
-              >
-                {p.charAt(0).toUpperCase() + p.slice(1)}
-              </button>
-            ))}
-          </div>
-
-          {/* compute / recompute */}
-          <button
-            className="btn btn-xs btn-outline w-full"
-            onClick={handleComputeViewshed}
-            disabled={viewshedStatus === "computing"}
-          >
-            {viewshedStatus === "done" ? "Recompute" : "Compute Viewshed"}
-          </button>
-        </div>
-      </div>
+      <MapControlsPanel
+        mapStyle={mapStyle}
+        onMapStyleChange={setMapStyle}
+        colorMode={colorMode}
+        onColorModeChange={setColorMode}
+        hasPace={hasPace}
+        unit={unit}
+        onUnitChange={setUnit}
+        onFitBounds={handleFitRoute}
+        centerLat={viewState.latitude}
+        centerLng={viewState.longitude}
+        terrainEnabled={terrainEnabled}
+        onTerrainEnabledChange={setTerrainEnabled}
+        terrainExp={terrainExp}
+        onTerrainExpChange={setTerrainExp}
+        viewshedStatus={viewshedStatus}
+        viewshedProgress={viewshedStatus === "computing" ? viewshedProgress : null}
+        onTriggerViewshed={handleComputeViewshed}
+        fogVisible={fogVisible}
+        onFogVisibleChange={setFogVisible}
+        fogOpacity={fogOpacity}
+        onFogOpacityChange={setFogOpacity}
+        fogAreaKm2={fogAreaKm2}
+        fogObserverCount={fogObserverCount}
+        fogComputedAt={fogComputedAt}
+      />
 
       <DeckGL
         viewState={viewState}
