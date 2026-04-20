@@ -40,7 +40,8 @@
       "Bash(xargs -0 wc -l)",
       "Bash(xargs wc *)",
       "Bash(git worktree *)",
-      "Bash(grep -E \"next\\\\.config|\\\\.ts$\")"
+      "Bash(grep -E \"next\\\\.config|\\\\.ts$\")",
+      "Bash(xargs grep *)"
     ]
   }
 }

@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "10mb",
     },
   },
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "api.mapbox.com" },
+    ],
+  },
 };
 
 export default nextConfig;
