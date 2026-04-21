@@ -26,10 +26,12 @@ export default function HikeCharts({
         <p className="text-xs text-base-content/50 mb-1">Elevation</p>
         <ElevationProfileChart trackPoints={trackPoints} unit={unit} height={elevationHeight} />
       </div>
-      <div>
-        <p className="text-xs text-base-content/50 mb-1">Pace</p>
-        <PaceChart trackPoints={trackPoints} unit={unit} height={paceHeight} />
-      </div>
+      {paceHeight > 0 && (
+        <div>
+          <p className="text-xs text-base-content/50 mb-1">Pace</p>
+          <PaceChart trackPoints={trackPoints} unit={unit} height={paceHeight} />
+        </div>
+      )}
     </>
   );
 }

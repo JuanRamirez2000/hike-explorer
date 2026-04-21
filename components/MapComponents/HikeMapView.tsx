@@ -5,11 +5,15 @@ import ReactMap, { type MapRef } from "react-map-gl/mapbox";
 import DeckGL from "@deck.gl/react";
 import { PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import type { MapViewState } from "@deck.gl/core";
-import type { FeatureCollection, Polygon } from "geojson";
+import type { FeatureCollection } from "geojson";
 import type { Hike, TrackPointSummary } from "@/types/models";
-import { haversineKm, cumulativeDistancesKm, rdpDecimate } from "@/lib/geo";
-import { lerpColor } from "@/lib/display-utils";
-import { MI_TO_KM, fmtElevation, type UnitSystem } from "@/lib/format";
+import { rdpDecimate } from "@/lib/geo";
+import { type UnitSystem } from "@/lib/format";
+import {
+  buildPins, buildElevationColors, buildPaceColors, buildDistanceMarkers,
+  geojsonAreaKm2, PIN_COLORS,
+} from "@/lib/map-layers";
+import type { MapStyle, ColorMode } from "@/types/map";
 import {
   buildGeoJSON,
   buildPointGeoJSON,
@@ -18,8 +22,7 @@ import {
   sampleObservers,
   VIEWSHED_DEFAULTS,
 } from "@/lib/viewshed";
-import type { ViewshedProgress } from "@/lib/viewshed";
-import type { ViewshedStatus } from "@/types/viewshed";
+import type { ViewshedProgress, ViewshedStatus } from "@/types/viewshed";
 import { saveViewshed } from "@/lib/viewshed-actions";
 import HikeInfoCard from "./HikeInfoCard";
 import MapControlsPanel from "./MapControlsPanel";
@@ -37,23 +40,6 @@ const MAP_STYLES: Record<string, string> = {
   satellite: "mapbox://styles/mapbox/satellite-v9",
   hybrid: "mapbox://styles/mapbox/satellite-streets-v12",
 };
-
-const ELEVATION_GRADIENT: [number, number, number][] = [
-  [59, 130, 246], // blue  – low
-  [34, 197, 94], // green
-  [234, 179, 8], // yellow
-  [239, 68, 68], // red   – high
-];
-
-const PACE_GRADIENT: [number, number, number][] = [
-  [34, 197, 94], // green  – fast
-  [234, 179, 8], // yellow
-  [239, 68, 68], // red    – slow
-];
-
-const PACE_MIN_KM = 3; // min/km  – clamp fast end
-const PACE_MAX_KM = 20; // min/km  – clamp slow end
-const MAX_PACE_SEGMENT = 30; // discard stopped segments
 
 // ── viewshed presets ──────────────────────────────────────────────────────────
 
@@ -73,9 +59,6 @@ function defaultPreset(hike: Hike): ViewshedPreset {
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
-
-type MapStyle = "outdoors" | "satellite" | "hybrid";
-type ColorMode = "default" | "elevation" | "pace";
 
 function initialViewState(hike: Hike): MapViewState {
   if (hike.bbox) {
@@ -97,133 +80,6 @@ function initialViewState(hike: Hike): MapViewState {
   };
 }
 
-function buildPins(pts: TrackPointSummary[], unit: UnitSystem) {
-  if (pts.length === 0) return [];
-  let hi = 0,
-    lo = 0;
-  for (let i = 1; i < pts.length; i++) {
-    if (pts[i].elevation > pts[hi].elevation) hi = i;
-    if (pts[i].elevation < pts[lo].elevation) lo = i;
-  }
-  return [
-    { id: "start", pt: pts[0], label: "Start" },
-    { id: "end", pt: pts[pts.length - 1], label: "End" },
-    {
-      id: "highest",
-      pt: pts[hi],
-      label: `▲ ${fmtElevation(pts[hi].elevation, unit)}`,
-    },
-    {
-      id: "lowest",
-      pt: pts[lo],
-      label: `▼ ${fmtElevation(pts[lo].elevation, unit)}`,
-    },
-  ];
-}
-
-const PIN_COLORS: Record<string, [number, number, number]> = {
-  start: [34, 197, 94],
-  end: [239, 68, 68],
-  highest: [168, 85, 247],
-  lowest: [234, 179, 8],
-};
-
-function buildElevationColors(
-  pts: TrackPointSummary[],
-): [number, number, number][] {
-  const elevs = pts.map((p) => p.elevation);
-  const min = Math.min(...elevs);
-  const max = Math.max(...elevs);
-  const range = max - min || 1;
-  return elevs.map((e) => lerpColor(ELEVATION_GRADIENT, (e - min) / range));
-}
-
-function buildPaceColors(
-  pts: TrackPointSummary[],
-): [number, number, number][] | null {
-  if (!pts.some((p) => p.timestamp)) return null;
-
-  // Compute per-segment pace, then assign per-vertex (average of adjacent segments)
-  const segPaces: (number | null)[] = [];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p1 = pts[i],
-      p2 = pts[i + 1];
-    if (!p1.timestamp || !p2.timestamp) {
-      segPaces.push(null);
-      continue;
-    }
-    const dtMin =
-      (new Date(p2.timestamp).getTime() - new Date(p1.timestamp).getTime()) /
-      60000;
-    const dist = haversineKm(p1.lat, p1.lng, p2.lat, p2.lng);
-    if (dist < 0.001 || dtMin <= 0) {
-      segPaces.push(null);
-      continue;
-    }
-    const pace = dtMin / dist;
-    segPaces.push(pace < MAX_PACE_SEGMENT ? pace : null);
-  }
-
-  const vertPaces = pts.map((_, i) => {
-    const a = i > 0 ? segPaces[i - 1] : null;
-    const b = i < segPaces.length ? segPaces[i] : null;
-    const vals = [a, b].filter((v): v is number => v !== null);
-    return vals.length > 0
-      ? vals.reduce((s, v) => s + v, 0) / vals.length
-      : null;
-  });
-
-  const valid = vertPaces.filter((v): v is number => v !== null);
-  if (valid.length === 0) return null;
-
-  const range = PACE_MAX_KM - PACE_MIN_KM;
-  return vertPaces.map((p) => {
-    const t =
-      p !== null ? Math.max(0, Math.min(1, (p - PACE_MIN_KM) / range)) : 0.5;
-    return lerpColor(PACE_GRADIENT, t);
-  });
-}
-
-function buildDistanceMarkers(pts: TrackPointSummary[], unit: UnitSystem) {
-  if (pts.length === 0) return [];
-  const intervalKm = unit === "imperial" ? MI_TO_KM : 1;
-  const suffix = unit === "imperial" ? "mi" : "km";
-  const cumDists = cumulativeDistancesKm(pts);
-  const markers: { pt: TrackPointSummary; label: string }[] = [];
-  let next = intervalKm;
-  let idx = 1;
-
-  for (let i = 1; i < pts.length; i++) {
-    if (cumDists[i] >= next) {
-      markers.push({ pt: pts[i], label: `${idx} ${suffix}` });
-      next += intervalKm;
-      idx++;
-    }
-  }
-  return markers;
-}
-
-
-// Shoelace area for a GeoJSON FeatureCollection of Polygons, returns km²
-function geojsonAreaKm2(fc: FeatureCollection): number {
-  let totalM2 = 0;
-  for (const feature of fc.features) {
-    const geom = feature.geometry;
-    if (geom.type !== "Polygon") continue;
-    for (const ring of (geom as Polygon).coordinates) {
-      const midLat = ring.reduce((s, c) => s + c[1], 0) / ring.length;
-      const latM = 111_320;
-      const lngM = 111_320 * Math.cos((midLat * Math.PI) / 180);
-      let a = 0;
-      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-        a += ring[j][0] * lngM * (ring[i][1] * latM);
-        a -= ring[i][0] * lngM * (ring[j][1] * latM);
-      }
-      totalM2 += Math.abs(a) / 2;
-    }
-  }
-  return totalM2 / 1_000_000;
-}
 
 // ── component ─────────────────────────────────────────────────────────────────
 
@@ -697,14 +553,8 @@ export default function HikeMapView({
       <MapControlsPanel
         mapStyle={mapStyle}
         onMapStyleChange={setMapStyle}
-        colorMode={colorMode}
-        onColorModeChange={setColorMode}
-        hasPace={hasPace}
         unit={unit}
         onUnitChange={setUnit}
-        onFitBounds={handleFitRoute}
-        centerLat={viewState.latitude}
-        centerLng={viewState.longitude}
         terrainEnabled={terrainEnabled}
         onTerrainEnabledChange={setTerrainEnabled}
         terrainExp={terrainExp}
@@ -716,9 +566,10 @@ export default function HikeMapView({
         onFogVisibleChange={setFogVisible}
         fogOpacity={fogOpacity}
         onFogOpacityChange={setFogOpacity}
+        fogRenderStyle={viewshedSmooth ? "smooth" : "grid"}
+        onFogRenderStyleChange={(s) => setViewshedSmooth(s === "smooth")}
         fogAreaKm2={fogAreaKm2}
         fogObserverCount={fogObserverCount}
-        fogComputedAt={fogComputedAt}
       />
 
       <DeckGL

@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { fmtDistance, fmtDuration, fmtElevation, MI_TO_KM, type UnitSystem } from "@/lib/format";
+import { useRef, useState } from "react";
+import { fmtDistance, fmtDuration, fmtElevation, fmtAvgPace, type UnitSystem } from "@/lib/format";
+import {
+  IconDownload, IconPlay, IconExpand,
+  IconPanelFull, IconPanelCompact, IconPanelIcon, IconMountain,
+} from "@/components/icons";
 import type { Hike, TrackPointSummary } from "@/types/models";
 import ElevationProfileChart from "@/components/HikeComponents/ElevationProfileChart";
 import PaceChart from "@/components/HikeComponents/PaceChart";
@@ -14,31 +18,9 @@ function splitFmt(s: string): [string, string] {
   return i === -1 ? [s, ""] : [s.slice(0, i), s.slice(i + 1)];
 }
 
-function fmtAvgPace(
-  durationSeconds: number | null,
-  distanceKm: number | null,
-  unit: UnitSystem,
-): string {
-  if (durationSeconds === null || distanceKm === null || distanceKm === 0) return "—";
-  const minPerKm = durationSeconds / 60 / distanceKm;
-  const pace = unit === "imperial" ? minPerKm * MI_TO_KM : minPerKm;
-  const totalSec = Math.round(pace * 60);
-  const min = Math.floor(totalSec / 60);
-  const sec = totalSec % 60;
-  return `${min}:${sec.toString().padStart(2, "0")} /${unit === "imperial" ? "mi" : "km"}`;
-}
-
 // ── stat cell ──────────────────────────────────────────────────────────────
 
-function StatCell({
-  label,
-  value,
-  unitSuffix = "",
-}: {
-  label: string;
-  value: string;
-  unitSuffix?: string;
-}) {
+function StatCell({ label, value, unitSuffix = "" }: { label: string; value: string; unitSuffix?: string }) {
   return (
     <div>
       <p className="text-[11px] tracking-wider text-base-content/60 font-medium uppercase mb-1 leading-none">
@@ -50,11 +32,7 @@ function StatCell({
         ) : (
           <>
             {value}
-            {unitSuffix && (
-              <span className="text-sm font-normal text-base-content/60 ml-1">
-                {unitSuffix}
-              </span>
-            )}
+            {unitSuffix && <span className="text-sm font-normal text-base-content/60 ml-1">{unitSuffix}</span>}
           </>
         )}
       </p>
@@ -62,40 +40,58 @@ function StatCell({
   );
 }
 
-// ── icons ──────────────────────────────────────────────────────────────────
+// ── display-mode dropdown ──────────────────────────────────────────────────
 
-function IconMinimize() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
+type DisplayMode = "full" | "compact" | "icon";
 
-function IconClose() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
+const MODES: { id: DisplayMode; label: string; icon: React.ReactNode }[] = [
+  { id: "full",    label: "Full",    icon: <IconPanelFull /> },
+  { id: "compact", label: "Compact", icon: <IconPanelCompact /> },
+  { id: "icon",    label: "Icon",    icon: <IconPanelIcon /> },
+];
 
-function IconDownload() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="7 10 12 15 17 10" />
-      <line x1="12" y1="15" x2="12" y2="3" />
-    </svg>
-  );
-}
+function DisplayModeDropdown({
+  current,
+  onChange,
+}: {
+  current: DisplayMode;
+  onChange: (m: DisplayMode) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-function IconPlay() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-      <polygon points="5 3 19 12 5 21 5 3" />
-    </svg>
+    <div className="relative" ref={ref}>
+      <button
+        className="btn btn-ghost btn-circle btn-sm"
+        title="Display mode"
+        onClick={() => setOpen((o) => !o)}
+      >
+        {MODES.find((m) => m.id === current)?.icon}
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-30 bg-base-100 border border-base-content/15 rounded-2xl shadow-xl p-1 w-36 flex flex-col gap-0.5">
+            {MODES.map((m) => (
+              <button
+                key={m.id}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[13px] font-medium transition-colors w-full ${
+                  current === m.id
+                    ? "bg-primary text-primary-content"
+                    : "hover:bg-base-200 text-base-content"
+                }`}
+                onClick={() => { onChange(m.id); setOpen(false); }}
+              >
+                <span className="shrink-0 opacity-80">{m.icon}</span>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -115,62 +111,84 @@ export default function HikeInfoCard({
   fogAreaKm2?: number | null;
 }) {
   const [chartMode, setChartMode] = useState<"elevation" | "pace" | "grade">("elevation");
+  const [displayMode, setDisplayMode] = useState<DisplayMode>("full");
   const hasPace = trackPoints.some((p) => p.timestamp);
 
-  const maxElev =
-    trackPoints.length > 0
-      ? Math.max(...trackPoints.map((p) => p.elevation))
-      : null;
+  const maxElev = trackPoints.length > 0 ? Math.max(...trackPoints.map((p) => p.elevation)) : null;
 
-  // Avg pace mm:ss
-  const [paceVal, paceSuffix] = splitFmt(
-    fmtAvgPace(hike.duration_seconds, hike.distance_km, unit),
-  );
-
-  // Distance and elevation splits
-  const [distVal, distUnit] = splitFmt(
-    hike.distance_km !== null ? fmtDistance(hike.distance_km, unit) : "—",
-  );
-  const [gainVal, gainUnit] = splitFmt(
-    hike.elevation_gain_m !== null ? fmtElevation(hike.elevation_gain_m, unit) : "—",
-  );
-  const [maxElevVal, maxElevUnit] = splitFmt(
-    maxElev !== null ? fmtElevation(maxElev, unit) : "—",
-  );
+  const [paceVal, paceSuffix] = splitFmt(fmtAvgPace(hike.duration_seconds, hike.distance_km, unit));
+  const [distVal, distUnit]   = splitFmt(hike.distance_km !== null ? fmtDistance(hike.distance_km, unit) : "—");
+  const [gainVal, gainUnit]   = splitFmt(hike.elevation_gain_m !== null ? fmtElevation(hike.elevation_gain_m, unit) : "—");
+  const [maxElevVal, maxElevUnit] = splitFmt(maxElev !== null ? fmtElevation(maxElev, unit) : "—");
 
   const startTimeLabel = hike.start_time
     ? new Date(hike.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : "—";
 
-  return (
-    <div
-      className="absolute top-4 left-4 z-10 bg-base-100 border border-base-300 shadow-lg rounded-3xl w-[340px] flex flex-col"
-      style={{ maxHeight: "calc(100vh - 6rem)" }}
-    >
-      {/* Scrollable content area */}
-      <div className="overflow-y-auto flex-1">
+  // ── icon mode ─────────────────────────────────────────────────────────────
 
-        {/* ── 1. Header row ────────────────────────────────────────────── */}
-        <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h2 className="text-base font-medium leading-tight truncate">{hike.name}</h2>
-            <p className="text-xs text-base-content/60 mt-0.5">
+  if (displayMode === "icon") {
+    return (
+      <div className="absolute top-4 left-4 z-10">
+        <button
+          className="w-11 h-11 rounded-2xl bg-base-100 border border-base-content/15 shadow-xl flex items-center justify-center text-base-content/70 hover:text-base-content transition-colors"
+          title={hike.name}
+          onClick={() => setDisplayMode("full")}
+        >
+          <IconMountain />
+        </button>
+      </div>
+    );
+  }
+
+  // ── compact mode ──────────────────────────────────────────────────────────
+
+  if (displayMode === "compact") {
+    return (
+      <div className="absolute top-4 left-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-2xl w-[340px]">
+        <div className="px-4 py-3 flex items-center gap-3">
+          <button
+            className="w-8 h-8 rounded-xl bg-base-200 flex items-center justify-center shrink-0 text-base-content/60 hover:text-base-content transition-colors"
+            onClick={() => setDisplayMode("full")}
+            title="Expand"
+          >
+            <IconExpand />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-semibold leading-tight truncate">{hike.name}</p>
+            <p className="text-[11px] text-base-content/55 leading-tight mt-0.5">
               {hike.date ?? "No date"} · {startTimeLabel}
             </p>
           </div>
-          <div className="flex gap-1 shrink-0">
-            {/* TODO: Minimize / close — collapse card to a title bar or hide.
-                Deferred: needs controlled open/closed state lifted to HikeMapView. */}
-            <button className="btn btn-ghost btn-circle btn-sm" title="Minimize" disabled>
-              <IconMinimize />
-            </button>
-            <button className="btn btn-ghost btn-circle btn-sm" title="Close" disabled>
-              <IconClose />
-            </button>
+          <DisplayModeDropdown current={displayMode} onChange={setDisplayMode} />
+        </div>
+      </div>
+    );
+  }
+
+  // ── full mode ─────────────────────────────────────────────────────────────
+
+  return (
+    <div
+      className="absolute top-4 left-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-3xl w-[340px] flex flex-col"
+      style={{ maxHeight: "calc(100vh - 6rem)" }}
+    >
+      <div className="overflow-y-auto flex-1">
+
+        {/* ── 1. Header ─────────────────────────────────────────────────── */}
+        <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold leading-tight truncate">{hike.name}</h2>
+            <p className="text-xs text-base-content/55 mt-0.5">
+              {hike.date ?? "No date"} · {startTimeLabel}
+            </p>
+          </div>
+          <div className="shrink-0">
+            <DisplayModeDropdown current={displayMode} onChange={setDisplayMode} />
           </div>
         </div>
 
-        {/* ── 2. Fog status pill ───────────────────────────────────────── */}
+        {/* ── 2. Fog status pill ─────────────────────────────────────────── */}
         {fogStatus !== null && (
           <div className="px-5 pb-3">
             <div
@@ -182,12 +200,10 @@ export default function HikeInfoCard({
                     : "bg-info/15 text-info"
               }`}
             >
-              {fogStatus === "complete" ? (
-                <span className="w-2 h-2 rounded-full bg-current shrink-0" />
-              ) : fogStatus === "error" ? (
-                <span className="w-2 h-2 rounded-full bg-current shrink-0" />
-              ) : (
+              {fogStatus === "processing" ? (
                 <span className="loading loading-spinner loading-xs shrink-0" />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-current shrink-0" />
               )}
               <span className="text-sm font-medium flex-1">
                 {fogStatus === "pending" || fogStatus === "processing"
@@ -197,63 +213,42 @@ export default function HikeInfoCard({
                     : "Viewshed failed"}
               </span>
               {fogStatus === "complete" && fogAreaKm2 !== null && (
-                <span className="text-xs font-medium ml-auto shrink-0">
-                  {fogAreaKm2.toFixed(1)} km²
-                </span>
+                <span className="text-xs font-medium ml-auto shrink-0">{fogAreaKm2.toFixed(1)} km²</span>
               )}
             </div>
           </div>
         )}
 
-        {/* ── 3. Stat grid ─────────────────────────────────────────────── */}
+        {/* ── 3. Stat grid ──────────────────────────────────────────────── */}
         <div className="px-5 pb-3">
           <div className="bg-base-200 rounded-2xl p-4 grid grid-cols-2 gap-x-3 gap-y-3.5">
-            <StatCell label="Distance" value={distVal} unitSuffix={distUnit} />
-            <StatCell label="Duration" value={fmtDuration(hike.duration_seconds)} />
-            <StatCell label="Elev. gain" value={gainVal} unitSuffix={gainUnit} />
-            {/* TODO: Elevation loss — Hike model has no elevation_loss_m field.
-                Deferred: either add a column and populate on upload, or compute
-                client-side from trackPoints. Showing "—" for now. */}
+            <StatCell label="Distance"  value={distVal}     unitSuffix={distUnit} />
+            <StatCell label="Duration"  value={fmtDuration(hike.duration_seconds)} />
+            <StatCell label="Elev. gain" value={gainVal}   unitSuffix={gainUnit} />
             <StatCell label="Elev. loss" value="—" />
-            <StatCell
-              label="Avg pace"
-              value={paceVal === "—" ? "—" : paceVal}
-              unitSuffix={paceVal === "—" ? "" : paceSuffix}
-            />
+            <StatCell label="Avg pace"  value={paceVal === "—" ? "—" : paceVal} unitSuffix={paceVal === "—" ? "" : paceSuffix} />
             <StatCell label="Max elev." value={maxElevVal} unitSuffix={maxElevUnit} />
-            {/* TODO: Grade stats (avg / max) — requires computing per-segment rise/run
-                from trackPoints. Deferred: not yet implemented; display "—". */}
             <StatCell label="Avg grade" value="—" />
             <StatCell label="Max grade" value="—" />
           </div>
         </div>
 
-        {/* ── 4. Profile section ───────────────────────────────────────── */}
+        {/* ── 4. Profile section ────────────────────────────────────────── */}
         {trackPoints.length >= 2 && (
           <div className="px-5 pb-5">
-            {/* Chart mode selector */}
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium">Profile</span>
+              <span className="text-sm font-semibold">Profile</span>
               <div className="flex bg-base-200 rounded-full p-0.5 gap-0.5">
                 {(["elevation", "pace", "grade"] as const).map((m) => (
                   <button
                     key={m}
-                    className={`btn btn-xs rounded-full px-3 border-0 ${
-                      chartMode === m ? "btn-primary" : "btn-ghost"
-                    }`}
+                    className={`btn btn-xs rounded-full px-3 border-0 ${chartMode === m ? "btn-primary" : "btn-ghost"}`}
                     onClick={() => setChartMode(m)}
-                    disabled={
-                      (m === "pace" && !hasPace) ||
-                      m === "grade"
-                      /* TODO: Grade chart mode — segment-grade BarChart is not yet
-                          implemented. Deferred: Grade button is disabled. */
-                    }
+                    disabled={(m === "pace" && !hasPace) || m === "grade"}
                     title={
-                      m === "pace" && !hasPace
-                        ? "No timestamps in GPX"
-                        : m === "grade"
-                          ? "Grade chart coming soon"
-                          : undefined
+                      m === "pace" && !hasPace ? "No timestamps in GPX"
+                      : m === "grade" ? "Grade chart coming soon"
+                      : undefined
                     }
                   >
                     {m === "elevation" ? "Elev" : m === "pace" ? "Pace" : "Grade"}
@@ -261,28 +256,11 @@ export default function HikeInfoCard({
                 ))}
               </div>
             </div>
-
-            {/* Chart surface */}
             <div className="bg-base-200 rounded-2xl p-4">
-              {/* TODO: Chart ↔ map scrubber sync — hovering the chart highlights the
-                  corresponding GPS coordinate on the deck.gl PathLayer. Tracked in
-                  TODO.md under "Hover Tooltip — Chart ↔ Map Sync". Deferred: needs
-                  shared hoverIndex state. */}
-              {chartMode === "elevation" && (
-                <ElevationProfileChart
-                  trackPoints={trackPoints}
-                  unit={unit}
-                  height={180}
-                />
-              )}
-              {chartMode === "pace" && hasPace && (
-                <PaceChart trackPoints={trackPoints} unit={unit} height={180} />
-              )}
+              {chartMode === "elevation" && <ElevationProfileChart trackPoints={trackPoints} unit={unit} height={180} />}
+              {chartMode === "pace" && hasPace && <PaceChart trackPoints={trackPoints} unit={unit} height={180} />}
               {chartMode === "grade" && (
-                <div
-                  className="flex items-center justify-center"
-                  style={{ height: 180 }}
-                >
+                <div className="flex items-center justify-center" style={{ height: 180 }}>
                   <p className="text-xs text-base-content/40">Grade chart coming soon</p>
                 </div>
               )}
@@ -292,23 +270,13 @@ export default function HikeInfoCard({
 
       </div>
 
-      {/* ── 5. Action row ────────────────────────────────────────────────── */}
-      <div className="px-5 py-4 border-t border-base-300 flex gap-2 shrink-0">
-        <button
-          className="btn bg-base-200 border-0 rounded-full flex-1 gap-2"
-          disabled
-        >
-          {/* TODO: Export button — download track points as CSV or GeoJSON.
-              Tracked in TODO.md under "CSV / JSON Export per Hike". */}
+      {/* ── 5. Action row ─────────────────────────────────────────────────── */}
+      <div className="px-5 py-4 border-t border-base-content/10 flex gap-2 shrink-0">
+        <button className="btn bg-base-200 border-0 rounded-full flex-1 gap-2" disabled>
           <IconDownload />
           Export
         </button>
-        <button
-          className="btn btn-primary rounded-full flex-1 gap-2"
-          disabled
-        >
-          {/* TODO: Replay button — animate a marker along the route.
-              Deferred: needs a playback state machine in HikeMapView. */}
+        <button className="btn btn-primary rounded-full flex-1 gap-2" disabled>
           <IconPlay />
           Replay
         </button>

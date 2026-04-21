@@ -12,9 +12,13 @@ const SUPABASE_URL         = process.env.SUPABASE_URL ?? "";
 const SUPABASE_ANON_KEY    = process.env.SUPABASE_ANON_KEY ?? "";
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
-// ── types (inlined — Deno cannot import from the Next.js @/ path) ────────────
-// Canonical geo functions (haversine, rdpDecimate, metersToDegreeLat/Lng)
-// live in lib/geo.ts — keep in sync if either side changes.
+// ── types and geo helpers (inlined — forced by Deno runtime) ─────────────────
+// The Deno runtime cannot resolve Next.js @/ path aliases, so the geo helpers
+// from lib/geo.ts and viewshed types from types/viewshed.ts are duplicated here.
+// If you change haversine, rdpDecimate, metersToDegreeLat/Lng, or the Observer
+// type in either canonical file, mirror the change here.
+// Longer-term fix: copy lib/geo.ts → supabase/functions/_shared/geo.ts via a
+// build step so both runtimes share source without a full monorepo package.
 
 type TrackPoint = { lat: number; lng: number; elevation: number };
 type Observer   = TrackPoint;
@@ -131,6 +135,10 @@ async function getElevation(lng: number, lat: number): Promise<number | null> {
 // ── viewshed algorithm ────────────────────────────────────────────────────────
 
 const NUM_RAYS     = 72;
+// Intentionally 1.5 km — this edge function is a server-side draft/preview pass.
+// The client-side computation (VIEWSHED_DEFAULTS.maxRadiusM = 50_000) runs the
+// full 50 km pass locally. Until the two are reconciled the stored fog_geojson
+// reflects only the 1.5 km radius; do not compare the two results directly.
 const MAX_RADIUS_M = 1_500;
 const STEP_M       = 25;
 const OBSERVER_H   = 1.7;
