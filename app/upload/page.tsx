@@ -67,12 +67,14 @@ export default function UploadPage() {
     setSubmitting(true);
     setSubmitResult(null);
     try {
-      // apply user edits over the parsed defaults
-      payload.name = formName.trim() || payload.name;
-      payload.date = formDate || null;
-      payload.stats.creator = formCreator.trim() || payload.stats.creator;
+      const merged = {
+        ...payload,
+        name: formName.trim() || payload.name,
+        date: formDate || null,
+        stats: { ...payload.stats, creator: formCreator.trim() || payload.stats.creator },
+      };
 
-      const result = await saveHike(payload, file);
+      const result = await saveHike(merged, file);
       if (result.success) {
         router.push("/user");
         return;

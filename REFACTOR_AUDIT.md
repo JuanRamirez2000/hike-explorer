@@ -1,16 +1,44 @@
 # Refactor Audit
 
+_Read-only audit. No files were modified. Generated 2026-04-20._
+
 ---
 
 ## Summary
 
-- **Files scanned:** 45
-- **Suggestions:** 14 (High: 5, Medium: 6, Low: 3)
-- **Status:** 12 completed, 2 deferred (large scope / design decisions needed)
+- **Files scanned:** 46 (all `.ts` / `.tsx` / `.sql` / `.json` under `app/`, `components/`, `lib/`, `types/`, `db/`, `supabase/functions/`, root config)
+- **Suggestions:** 15 (High: 4, Medium: 7, Low: 4)
+- **Top 3 highest-impact items**
+  1. `proxy.ts` is not wired as Next.js middleware — session refresh silently never runs
+  2. `HikeMapView.tsx` (595 lines, 5+ responsibilities) — hotpath and growing
+  3. Geo / viewshed logic duplicated verbatim between `lib/` and the Edge Function
+
+---
+
+## Deferred / Still To Do
+
+### [High] supabase/functions/compute-viewshed/index.ts — async elevation inside tight inner loop
+**Remaining:** Pre-fetch all tiles touched by an observer's bounding circle before starting the ray loop (2–4 tiles per observer), then make elevation lookup synchronous. Eliminates 4,320+ sequential `await`s per observer.
+**Effort:** L
+
+---
+
+## Deferred / Needs Design Decision
+
+1. **`fog_geojson` vs client-computed viewshed split.** The edge function stores a 1.5 km-radius result; the client computes up to 50 km live. Both write to the same `fog_geojson` column. Document the intended split before adding UI that reads `fog_geojson` for display.
+
+2. **Edge Function import isolation.** Duplication of `lib/geo.ts` / `lib/viewshed.ts` logic is forced by Deno. A vendored `supabase/functions/_shared/` directory populated by a build-time copy script would resolve this without a full monorepo refactor. Worth setting up before the edge function grows further.
+
+3. **`TrackPointSummary` vs `TrackPoint` timestamp types.** `TrackPointSummary.timestamp` is `string | null`; Drizzle-inferred `TrackPoint.timestamp` is `Date | null`. Pages manually convert via `.toISOString()` at the query boundary. Intentional RSC serialisation — flag if a third page adds a similar query.
 
 ---
 
 ## Completed
+
+### [High] ✅ proxy.ts — Not broken: Next.js 16 uses proxy.ts with named proxy export
+**Done:** Audit suggestion was based on pre-v16 knowledge. Next.js 16 renamed middleware to proxy — `proxy.ts` with `export function proxy` at the project root is the correct and working convention. No change needed.
+
+---
 
 ### [High] ✅ components/HikeComponents/HikeCard.tsx + components/MapComponents/HikeInfoCard.tsx — fmtAvgPace dedupe
 **Done:** Added `fmtAvgPace` to `lib/format.ts`. Removed both local copies. Both files now import from `@/lib/format`.
@@ -29,6 +57,36 @@
 
 ### [High] ✅ supabase/functions/compute-viewshed/index.ts — MAX_RADIUS_M = 1_500 vs client 50_000
 **Done:** Added an explicit comment block explaining the intentional 1.5 km server-side draft pass vs the 50 km client-side computation. Also added a `fog_geojson` vs client-computed note to prevent silent debugging confusion.
+
+---
+
+### [Medium] ✅ HikeInfoCard.tsx & MapControlsPanel.tsx — duplicated DisplayModeDropdown
+**Done:** Extracted to `components/MapComponents/DisplayModeDropdown.tsx`. `DisplayMode` type exported from there. Both `HikeInfoCard.tsx` and `MapControlsPanel.tsx` now import the shared component.
+
+---
+
+### [Medium] ✅ app/user/page.tsx & app/hike/[id]/map/page.tsx — duplicated TrackPointSummary mapping
+**Done:** Added `toTrackPointSummary(row)` helper to `types/models.ts`. Both pages now call `points.map(toTrackPointSummary)` instead of inline mapping.
+
+---
+
+### [Medium] ✅ lib/viewshed-actions.ts:25 — floating Promise in fireViewshed error handler
+**Done:** `.catch()` now uses `async () => { await db.update(...) }`. Error status write can no longer silently fail.
+
+---
+
+### [Medium] ✅ app/upload/page.tsx:71 — direct mutation of payload state object
+**Done:** `handleSubmit` now builds `const merged = { ...payload, ... }` and passes `merged` to `saveHike`. React immutability contract respected.
+
+---
+
+### [Medium] ✅ lib/hike-actions.ts:78 + lib/viewshed-actions.ts:37 — getSession() used server-side without prior getUser() validation
+**Done:** Both call sites now call `await supabase.auth.getUser()` immediately before `getSession()`, making server-side validation explicit at the token-extraction point.
+
+---
+
+### [Medium] ✅ components/MapComponents/HikeInfoCard.tsx:109 — fogStatus prop type duplicates Drizzle enum
+**Done:** Added `FogStatus = typeof hikes.$inferSelect["fog_status"]` to `types/models.ts`. `HikeInfoCard` prop now uses `FogStatus | null`.
 
 ---
 
@@ -67,35 +125,30 @@
 
 ---
 
-### [High] ✅ components/MapComponents/HikeMapView.tsx — layer logic extracted
-**Done (partial):** `buildPins`, `buildElevationColors`, `buildPaceColors`, `buildDistanceMarkers`, `geojsonAreaKm2`, and all color constants/gradients extracted into new `lib/map-layers.ts`. `HikeMapView.tsx` reduced by ~130 lines and now imports these helpers. Full `useViewshed` hook extraction still deferred (see below).
+### [High] ✅ components/MapComponents/HikeMapView.tsx — layer logic extracted + useViewshed hook extracted
+**Done:** `buildPins`, `buildElevationColors`, `buildPaceColors`, `buildDistanceMarkers`, `geojsonAreaKm2`, and all color constants/gradients extracted into `lib/map-layers.ts`. All viewshed state, refs, computation loop, and `syncViewshedLayer` callback extracted into `hooks/useViewshed.ts`. `HikeMapView.tsx` reduced to ~200 lines (component + terrain helpers only).
 
 ---
 
-## Deferred / Still To Do
-
-### [High] components/MapComponents/HikeMapView.tsx — Extract useViewshed hook
-**Remaining:** The chunked viewshed computation loop (~200 lines of refs, `useEffect`s, progress state, and `setTimeout` scheduling) can be extracted into `hooks/useViewshed.ts`. The layer extraction above was the prerequisite; this is now unblocked.
-**Effort:** L
+### [High] ✅ components/MapComponents/MapControlsPanel.tsx — split sub-components
+**Done:** `Medallion`/`MedallionRow` extracted to `MapPanelPrimitives.tsx`; `FogStatusBanner` to `FogStatusBanner.tsx`; `StyleThumbnail` to `StyleThumbnail.tsx`. `MapControlsPanel.tsx` now contains only the panel component and its props interface (~230 lines).
 
 ---
 
-### [High] components/MapComponents/MapControlsPanel.tsx — Split tab panels
-**Remaining:** Still 700+ lines. The three tab panels (`MapTab`, `FogTab`, `ViewTab`) and the `Medallion`/`MedallionRow`/`StyleThumbnail` sub-components can be split into co-located files. Icon extraction (done above) was the prerequisite.
-**Effort:** M
+### [Low] ✅ components/HikeComponents/HikeCard.tsx:103 — stale TODO comment (minimap already implemented)
+**Done:** Deleted the stale TODO block. `buildMinimapUrl` and the `<Image>` render below it are the implementation.
 
 ---
 
-### [High] supabase/functions/compute-viewshed/index.ts — async elevation inside tight inner loop
-**Remaining:** Pre-fetch all tiles touched by an observer's bounding circle before starting the ray loop (2–4 tiles per observer), then make elevation lookup synchronous. Eliminates 4,320+ sequential `await`s per observer.
-**Effort:** L
+### [Low] ✅ lib/format.ts:51 — fmtAvgPace duplicates pace-formatting logic from fmtPace
+**Done:** `fmtAvgPace` now computes `minPerKm` then delegates to `fmtPace(minPerKm, unit)`. Single formatting implementation.
 
 ---
 
-## Deferred / Needs Design Decision
+### [Low] ✅ components/MapComponents/HikeInfoCard.tsx:228 — hardcoded stub cells with no debt marker
+**Done:** Added TODO comments on "Elev. loss" and "Avg/Max grade" cells to mark them as not-yet-implemented.
 
-1. **`fog_geojson` vs client-computed viewshed split.** The edge function stores a 1.5 km-radius result; the client computes up to 50 km live. Both write to the same `fog_geojson` column. Document the intended split before adding UI that reads `fog_geojson` for display.
+---
 
-2. **Edge Function import isolation.** Duplication of `lib/geo.ts` / `lib/viewshed.ts` logic is forced by Deno. A vendored `supabase/functions/_shared/` directory populated by a build-time copy script would resolve this without a full monorepo refactor. Worth setting up before the edge function grows further.
-
-3. **`TrackPointSummary` vs `TrackPoint` timestamp types.** `TrackPointSummary.timestamp` is `string | null`; Drizzle-inferred `TrackPoint.timestamp` is `Date | null`. Pages manually convert via `.toISOString()` at the query boundary. Intentional RSC serialisation — flag if a third page adds a similar query.
+### [Low] ✅ components/MapComponents/HikeMapView.tsx:146 — 7 separate ref-sync useEffects
+**Done:** Removed all 7 effects. Ref assignments are now inline in the render body (`terrainExpRef.current = terrainExp;` etc.), which is the canonical pattern.

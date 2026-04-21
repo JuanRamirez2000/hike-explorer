@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import HikeCard from "@/components/HikeComponents/HikeCard";
 import DashboardStats from "@/components/DashboardStats";
-import type { TrackPointSummary } from "@/types/models";
+import { toTrackPointSummary, type TrackPointSummary } from "@/types/models";
 import { CHART_MAX_POINTS } from "@/lib/chart-utils";
 
 export default async function UserPage() {
@@ -41,15 +41,7 @@ export default async function UserPage() {
     );
 
     for (const { hikeId, pts } of results) {
-      trackPointsByHike.set(
-        hikeId,
-        pts.map((p) => ({
-          lat: p.lat,
-          lng: p.lng,
-          elevation: p.elevation,
-          timestamp: p.timestamp ? p.timestamp.toISOString() : null,
-        })),
-      );
+      trackPointsByHike.set(hikeId, pts.map(toTrackPointSummary));
     }
   }
 

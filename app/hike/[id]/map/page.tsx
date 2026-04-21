@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/supabase/session";
 import { eq, asc, and } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import HikeMapLoader from "@/components/MapComponents/HikeMapLoader";
+import { toTrackPointSummary } from "@/types/models";
 
 export default async function HikeMapPage({
   params,
@@ -36,12 +37,7 @@ export default async function HikeMapPage({
   const [hike] = hikeResult;
   if (!hike) notFound();
 
-  const trackPointSummaries = points.map((p) => ({
-    lat: p.lat,
-    lng: p.lng,
-    elevation: p.elevation,
-    timestamp: p.timestamp ? p.timestamp.toISOString() : null,
-  }));
+  const trackPointSummaries = points.map(toTrackPointSummary);
 
   return <HikeMapLoader hike={hike} trackPoints={trackPointSummaries} />;
 }

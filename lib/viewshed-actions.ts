@@ -22,8 +22,8 @@ export async function fireViewshed(hikeId: string, accessToken: string): Promise
       Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({ hikeId }),
-  }).catch(() => {
-    db.update(hikes).set({ fog_status: "error" }).where(eq(hikes.id, hikeId));
+  }).catch(async () => {
+    await db.update(hikes).set({ fog_status: "error" }).where(eq(hikes.id, hikeId));
   });
 }
 
@@ -34,6 +34,8 @@ export async function triggerViewshed(
   if (!user) return { success: false, error: "Not authenticated" };
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
+  // getUser() validates server-side; getSession() then reads cookie for the token
+  await supabase.auth.getUser();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return { success: false, error: "No active session" };
 

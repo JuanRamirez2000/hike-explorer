@@ -100,9 +100,6 @@ export default function HikeCard({
 
   return (
     <div className="card bg-base-100 border border-base-300 shadow-sm overflow-hidden">
-      {/* TODO: Map thumbnail — render a static mini-map preview using a Mapbox Static Image
-          API URL (bbox from hike.bbox). Requires exposing NEXT_PUBLIC_MAPBOX_TOKEN client-side
-          and deciding on image dimensions. Deferred: needs Static Images API integration. */}
       {minimapUrl && !editing && (
         <div className="relative w-full" style={{ height: 160 }}>
           <Image

@@ -75,6 +75,8 @@ export async function saveHike(
     await db.insert(trackPoints).values(rows.slice(i, i + CHUNK_SIZE));
   }
 
+  // getUser() validates server-side; getSession() then reads cookie for the token
+  await supabase.auth.getUser();
   const { data: { session } } = await supabase.auth.getSession();
   if (session) await fireViewshed(hike.id, session.access_token);
 

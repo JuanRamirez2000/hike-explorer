@@ -1,15 +1,18 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { ViewshedStatus, ViewshedProgress } from "@/types/viewshed";
 import type { MapStyle } from "@/types/map";
 import type { UnitSystem } from "@/lib/format";
 import {
   IconMap, IconEye, IconLayers, IconRuler,
-  IconCheck, IconAlert, IconEllipsis, IconSun,
-  IconMountain, IconTriangle, IconRefresh, IconPlay,
-  IconExpand, IconPanelFull, IconPanelCompact, IconPanelIcon,
+  IconSun, IconMountain, IconTriangle, IconRefresh, IconPlay,
+  IconExpand,
 } from "@/components/icons";
+import DisplayModeDropdown, { type DisplayMode } from "@/components/MapComponents/DisplayModeDropdown";
+import { Medallion, MedallionRow } from "@/components/MapComponents/MapPanelPrimitives";
+import FogStatusBanner from "@/components/MapComponents/FogStatusBanner";
+import StyleThumbnail from "@/components/MapComponents/StyleThumbnail";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 const PREVIEW_LOC = "-119.55,37.74,9,0"; // Yosemite — shows terrain, water, and roads across all three styles
@@ -21,61 +24,6 @@ const BASEMAP_PREVIEWS: Record<MapStyle, string> = {
 };
 
 export type FogRenderStyle = "grid" | "smooth";
-
-// ── display-mode dropdown ──────────────────────────────────────────────────
-
-type DisplayMode = "full" | "compact" | "icon";
-
-const DISPLAY_MODES: { id: DisplayMode; label: string; icon: React.ReactNode }[] = [
-  { id: "full",    label: "Full",    icon: <IconPanelFull /> },
-  { id: "compact", label: "Compact", icon: <IconPanelCompact /> },
-  { id: "icon",    label: "Icon",    icon: <IconPanelIcon /> },
-];
-
-function DisplayModeDropdown({
-  current,
-  onChange,
-}: {
-  current: DisplayMode;
-  onChange: (m: DisplayMode) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        className="btn btn-ghost btn-circle btn-sm"
-        title="Display mode"
-        onClick={() => setOpen((o) => !o)}
-      >
-        {DISPLAY_MODES.find((m) => m.id === current)?.icon}
-      </button>
-
-      {open && (
-        <>
-          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-30 bg-base-100 border border-base-content/15 rounded-2xl shadow-xl p-1 w-36 flex flex-col gap-0.5">
-            {DISPLAY_MODES.map((m) => (
-              <button
-                key={m.id}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[13px] font-medium transition-colors w-full ${
-                  current === m.id
-                    ? "bg-primary text-primary-content"
-                    : "hover:bg-base-200 text-base-content"
-                }`}
-                onClick={() => { onChange(m.id); setOpen(false); }}
-              >
-                <span className="shrink-0 opacity-80">{m.icon}</span>
-                {m.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 export interface MapControlsPanelProps {
   mapStyle: MapStyle;
@@ -102,152 +50,6 @@ export interface MapControlsPanelProps {
   fogAreaKm2: number | null;
   fogObserverCount: number | null;
 }
-
-// ── sub-components ─────────────────────────────────────────────────────────
-
-function Medallion({
-  children,
-  className = "bg-base-100 border border-base-content/15",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${className}`}>
-      {children}
-    </div>
-  );
-}
-
-function MedallionRow({
-  icon,
-  medallionClass,
-  title,
-  subtitle,
-  trailing,
-  surface = true,
-}: {
-  icon: React.ReactNode;
-  medallionClass?: string;
-  title: string;
-  subtitle: string;
-  trailing?: React.ReactNode;
-  surface?: boolean;
-}) {
-  return (
-    <div className={`rounded-2xl p-4 flex items-center gap-3 ${surface ? "bg-base-200" : "border border-base-content/15"}`}>
-      <Medallion className={medallionClass}>{icon}</Medallion>
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-semibold leading-tight">{title}</p>
-        <p className="text-[11px] text-base-content/65 leading-tight mt-0.5">{subtitle}</p>
-      </div>
-      {trailing}
-    </div>
-  );
-}
-
-function StyleThumbnail({
-  active,
-  label,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      className={`aspect-square rounded-2xl relative overflow-hidden cursor-pointer border-2 transition-colors ${
-        active ? "border-primary shadow-sm" : "border-base-content/15 hover:border-base-content/30"
-      }`}
-      onClick={onClick}
-    >
-      <div className="w-full h-full">{children}</div>
-      <span className={`absolute bottom-0 inset-x-0 text-center text-[10px] font-semibold bg-base-100/92 py-1 ${active ? "text-primary" : "text-base-content/80"}`}>
-        {label}
-      </span>
-    </button>
-  );
-}
-
-// ── fog status banner ──────────────────────────────────────────────────────
-
-function FogStatusBanner({
-  viewshedStatus,
-  viewshedProgress,
-  fogAreaKm2,
-  fogObserverCount,
-}: {
-  viewshedStatus: ViewshedStatus;
-  viewshedProgress: ViewshedProgress | null;
-  fogAreaKm2: number | null;
-  fogObserverCount: number | null;
-}) {
-  if (viewshedStatus === "done") {
-    return (
-      <div className="flex items-center gap-3 p-4 rounded-2xl bg-success/15">
-        <Medallion className="bg-success/25">
-          <span className="text-success"><IconCheck /></span>
-        </Medallion>
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-success leading-tight">Viewshed ready</p>
-          <p className="text-[11px] text-success/75 leading-tight mt-0.5">
-            {fogAreaKm2 !== null ? `${fogAreaKm2.toFixed(1)} km² visible` : "—"} ·{" "}
-            {fogObserverCount ?? "—"} observers
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (viewshedStatus === "computing") {
-    return (
-      <div className="flex items-center gap-3 p-4 rounded-2xl bg-info/15">
-        <Medallion className="bg-info/25">
-          <span className="loading loading-spinner loading-sm text-info" />
-        </Medallion>
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-info leading-tight">Computing viewshed…</p>
-          <p className="text-[11px] text-info/75 leading-tight mt-0.5">
-            {viewshedProgress
-              ? `${viewshedProgress.processed}/${viewshedProgress.total} observers`
-              : "Starting…"}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (viewshedStatus === "error") {
-    return (
-      <div className="flex items-center gap-3 p-4 rounded-2xl bg-error/15">
-        <Medallion className="bg-error/25">
-          <span className="text-error"><IconAlert /></span>
-        </Medallion>
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-error leading-tight">Viewshed failed</p>
-          <p className="text-[11px] text-error/75 leading-tight mt-0.5">Tap recompute to retry</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-3 p-4 rounded-2xl bg-base-200">
-      <Medallion className="bg-base-100 border border-base-content/15">
-        <span className="text-base-content/50"><IconEllipsis /></span>
-      </Medallion>
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-semibold leading-tight">No viewshed yet</p>
-        <p className="text-[11px] text-base-content/65 leading-tight mt-0.5">Tap recompute to generate</p>
-      </div>
-    </div>
-  );
-}
-
-// ── component ──────────────────────────────────────────────────────────────
 
 export default function MapControlsPanel({
   mapStyle,

@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { fmtDistance, fmtDuration, fmtElevation, fmtAvgPace, type UnitSystem } from "@/lib/format";
 import {
-  IconDownload, IconPlay, IconExpand,
-  IconPanelFull, IconPanelCompact, IconPanelIcon, IconMountain,
+  IconDownload, IconPlay, IconExpand, IconMountain,
 } from "@/components/icons";
-import type { Hike, TrackPointSummary } from "@/types/models";
+import type { Hike, TrackPointSummary, FogStatus } from "@/types/models";
+import DisplayModeDropdown, { type DisplayMode } from "@/components/MapComponents/DisplayModeDropdown";
 import ElevationProfileChart from "@/components/HikeComponents/ElevationProfileChart";
 import PaceChart from "@/components/HikeComponents/PaceChart";
 
@@ -40,61 +40,6 @@ function StatCell({ label, value, unitSuffix = "" }: { label: string; value: str
   );
 }
 
-// ── display-mode dropdown ──────────────────────────────────────────────────
-
-type DisplayMode = "full" | "compact" | "icon";
-
-const MODES: { id: DisplayMode; label: string; icon: React.ReactNode }[] = [
-  { id: "full",    label: "Full",    icon: <IconPanelFull /> },
-  { id: "compact", label: "Compact", icon: <IconPanelCompact /> },
-  { id: "icon",    label: "Icon",    icon: <IconPanelIcon /> },
-];
-
-function DisplayModeDropdown({
-  current,
-  onChange,
-}: {
-  current: DisplayMode;
-  onChange: (m: DisplayMode) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        className="btn btn-ghost btn-circle btn-sm"
-        title="Display mode"
-        onClick={() => setOpen((o) => !o)}
-      >
-        {MODES.find((m) => m.id === current)?.icon}
-      </button>
-
-      {open && (
-        <>
-          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-30 bg-base-100 border border-base-content/15 rounded-2xl shadow-xl p-1 w-36 flex flex-col gap-0.5">
-            {MODES.map((m) => (
-              <button
-                key={m.id}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[13px] font-medium transition-colors w-full ${
-                  current === m.id
-                    ? "bg-primary text-primary-content"
-                    : "hover:bg-base-200 text-base-content"
-                }`}
-                onClick={() => { onChange(m.id); setOpen(false); }}
-              >
-                <span className="shrink-0 opacity-80">{m.icon}</span>
-                {m.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 // ── component ──────────────────────────────────────────────────────────────
 
 export default function HikeInfoCard({
@@ -107,7 +52,7 @@ export default function HikeInfoCard({
   hike: Hike;
   trackPoints?: TrackPointSummary[];
   unit?: UnitSystem;
-  fogStatus?: "pending" | "processing" | "complete" | "error" | null;
+  fogStatus?: FogStatus | null;
   fogAreaKm2?: number | null;
 }) {
   const [chartMode, setChartMode] = useState<"elevation" | "pace" | "grade">("elevation");
@@ -225,9 +170,11 @@ export default function HikeInfoCard({
             <StatCell label="Distance"  value={distVal}     unitSuffix={distUnit} />
             <StatCell label="Duration"  value={fmtDuration(hike.duration_seconds)} />
             <StatCell label="Elev. gain" value={gainVal}   unitSuffix={gainUnit} />
+            {/* TODO: elevation loss not yet computed from track points */}
             <StatCell label="Elev. loss" value="—" />
             <StatCell label="Avg pace"  value={paceVal === "—" ? "—" : paceVal} unitSuffix={paceVal === "—" ? "" : paceSuffix} />
             <StatCell label="Max elev." value={maxElevVal} unitSuffix={maxElevUnit} />
+            {/* TODO: grade stats require elevation delta / distance segment computation */}
             <StatCell label="Avg grade" value="—" />
             <StatCell label="Max grade" value="—" />
           </div>
