@@ -47,3 +47,17 @@ export function fmtElevation(m: number, unit: UnitSystem = "metric"): string {
     ? `${Math.round(convertElevation(m, unit))} ft`
     : `${Math.round(m)} m`;
 }
+
+export function fmtAvgPace(
+  durationSeconds: number | null,
+  distanceKm: number | null,
+  unit: UnitSystem,
+): string {
+  if (durationSeconds === null || distanceKm === null || distanceKm === 0) return "—";
+  const minPerKm = durationSeconds / 60 / distanceKm;
+  const pace = unit === "imperial" ? minPerKm * MI_TO_KM : minPerKm;
+  const totalSeconds = Math.round(pace * 60);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")} /${unit === "imperial" ? "mi" : "km"}`;
+}

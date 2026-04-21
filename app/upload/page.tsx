@@ -3,7 +3,7 @@
 import { buildHikePayload, getGPXMetadata } from "@/lib/gpx-parser";
 import { saveHike } from "@/lib/hike-actions";
 import { fmtDuration, fmtDistance, fmtElevation, type UnitSystem } from "@/lib/format";
-import type { GPXMetadataSummary } from "@/types/hike-upload";
+import type { GPXMetadataSummary, ParsedHikePayload } from "@/types/hike-upload";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import StatRow from "@/components/StatRow";
@@ -15,6 +15,7 @@ export default function UploadPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [metadata, setMetadata] = useState<GPXMetadataSummary | null>(null);
+  const [payload, setPayload] = useState<ParsedHikePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -30,6 +31,7 @@ export default function UploadPage() {
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
     setMetadata(null);
+    setPayload(null);
     setError(null);
     setSubmitResult(null);
     setFile(null);
@@ -42,12 +44,16 @@ export default function UploadPage() {
 
     setLoading(true);
     try {
-      const result = await getGPXMetadata(selected);
-      setMetadata(result);
+      const [meta, parsed] = await Promise.all([
+        getGPXMetadata(selected),
+        buildHikePayload(selected),
+      ]);
+      setMetadata(meta);
+      setPayload(parsed);
       setFile(selected);
-      setFormName(result.name);
-      setFormDate(result.date ?? "");
-      setFormCreator(result.creator);
+      setFormName(meta.name);
+      setFormDate(meta.date ?? "");
+      setFormCreator(meta.creator);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to parse file");
     } finally {
@@ -56,12 +62,11 @@ export default function UploadPage() {
   }
 
   async function handleSubmit() {
-    if (!file) return;
+    if (!file || !payload) return;
 
     setSubmitting(true);
     setSubmitResult(null);
     try {
-      const payload = await buildHikePayload(file);
       // apply user edits over the parsed defaults
       payload.name = formName.trim() || payload.name;
       payload.date = formDate || null;

@@ -1,34 +1,16 @@
 import type { FeatureCollection, Feature, Polygon, Point } from "geojson";
 import type { TrackPointSummary } from "@/types/models";
 import { haversineM, metersToDegreeLat, metersToDegreeLng } from "@/lib/geo";
+import type {
+  Observer,
+  GetElevationFn,
+  ViewshedOptions,
+  ViewshedProgress,
+} from "@/types/viewshed";
+import { VIEWSHED_DEFAULTS } from "@/types/viewshed";
 
-// ── types ─────────────────────────────────────────────────────────────────────
-
-export type Observer = { lat: number; lng: number; elevation: number };
-
-export type GetElevationFn = (lng: number, lat: number) => number | null;
-
-export type ViewshedOptions = {
-  numRays?: number;
-  maxRadiusM?: number;
-  stepM?: number;
-  observerHeightM?: number;
-  cellSizeM?: number;
-};
-
-export type ViewshedProgress = {
-  processed: number;
-  total: number;
-  pct: number;
-};
-
-export const VIEWSHED_DEFAULTS: Required<ViewshedOptions> = {
-  numRays: 72,
-  maxRadiusM: 50000,   // ~50 km — tiles loaded by pre-computation zoom-out cover this range
-  stepM: 25,            // minimum step (close range); grows adaptively with distance
-  observerHeightM: 1.7,
-  cellSizeM: 50,        // larger cells keep GeoJSON size manageable at long range
-};
+export type { Observer, GetElevationFn, ViewshedOptions, ViewshedProgress };
+export { VIEWSHED_DEFAULTS };
 
 // ── observer sampling ─────────────────────────────────────────────────────────
 

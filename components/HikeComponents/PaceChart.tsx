@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { cumulativeDistancesKm, haversineKm } from "@/lib/geo";
-import { downsamplePoints, CHART_MAX_POINTS } from "@/lib/display-utils";
+import { downsamplePoints, CHART_MAX_POINTS } from "@/lib/chart-utils";
 import type { TrackPointSummary } from "@/types/models";
 import { convertDistance, convertPace, type UnitSystem } from "@/lib/format";
 

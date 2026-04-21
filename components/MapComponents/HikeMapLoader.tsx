@@ -1,5 +1,7 @@
 "use client";
 
+// Intentional thin wrapper: keeps `ssr: false` and the loading skeleton co-located
+// with the import boundary, so the page RSC stays clean.
 import dynamic from "next/dynamic";
 import type { Hike, TrackPointSummary } from "@/types/models";
 

@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { cumulativeDistancesKm } from "@/lib/geo";
-import { downsamplePoints, CHART_MAX_POINTS } from "@/lib/display-utils";
+import { downsamplePoints, CHART_MAX_POINTS } from "@/lib/chart-utils";
 import type { TrackPointSummary } from "@/types/models";
 import { convertDistance, convertElevation, type UnitSystem } from "@/lib/format";
 

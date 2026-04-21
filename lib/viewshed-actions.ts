@@ -30,10 +30,10 @@ export async function fireViewshed(hikeId: string, accessToken: string): Promise
 export async function triggerViewshed(
   hikeId: string,
 ): Promise<{ success: boolean; error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Not authenticated" };
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Not authenticated" };
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return { success: false, error: "No active session" };
 

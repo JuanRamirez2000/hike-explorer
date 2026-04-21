@@ -7,7 +7,7 @@ import Link from "next/link";
 import HikeCard from "@/components/HikeComponents/HikeCard";
 import DashboardStats from "@/components/DashboardStats";
 import type { TrackPointSummary } from "@/types/models";
-import { CHART_MAX_POINTS } from "@/lib/display-utils";
+import { CHART_MAX_POINTS } from "@/lib/chart-utils";
 
 export default async function UserPage() {
   const user = await getCurrentUser();

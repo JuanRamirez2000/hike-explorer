@@ -18,14 +18,15 @@ export async function saveHike(
   payload: ParsedHikePayload,
   gpxFile?: File,
 ): Promise<UploadResult> {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { success: false, error: "Not authenticated" };
 
   if (payload.trackPoints.length === 0) {
     return { success: false, error: "GPX file contains no track points" };
   }
+
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
 
   let gpxStoragePath: string | null = null;
   if (gpxFile) {
@@ -84,10 +85,10 @@ export async function saveHike(
 export async function deleteHike(
   hikeId: string,
 ): Promise<{ success: boolean; error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Not authenticated" };
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, error: "Not authenticated" };
 
   const [owned] = await db
     .select({ id: hikes.id, gpx_storage_path: hikes.gpx_storage_path })
