@@ -3,7 +3,7 @@
 import { deleteHike, updateHike } from "@/lib/hike-actions";
 import type { Hike, TrackPointSummary } from "@/types/models";
 import { fmtDuration, fmtDistance, fmtElevation, fmtAvgPace, type UnitSystem } from "@/lib/format";
-import { IconShare, IconEdit, IconDelete } from "@/components/icons";
+import { Share2, Pencil, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
@@ -221,7 +221,7 @@ export default function HikeCard({
                 title="Share"
                 disabled
               >
-                <IconShare />
+                <Share2 size={16} strokeWidth={1.6} />
               </button>
 
               <button
@@ -230,7 +230,7 @@ export default function HikeCard({
                 onClick={() => setEditing(true)}
                 disabled={busy}
               >
-                <IconEdit />
+                <Pencil size={16} strokeWidth={1.6} />
               </button>
 
               <button
@@ -239,7 +239,7 @@ export default function HikeCard({
                 onClick={() => setShowDeleteModal(true)}
                 disabled={busy}
               >
-                <IconDelete />
+                <Trash2 size={16} strokeWidth={1.6} />
               </button>
             </div>
           </>

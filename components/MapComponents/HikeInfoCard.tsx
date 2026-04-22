@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { fmtDistance, fmtDuration, fmtElevation, fmtAvgPace, type UnitSystem } from "@/lib/format";
-import {
-  IconDownload, IconPlay, IconExpand, IconMountain,
-} from "@/components/icons";
+import { Download, Play, Expand, Mountain } from "lucide-react";
 import type { Hike, TrackPointSummary, FogStatus } from "@/types/models";
 import DisplayModeDropdown, { type DisplayMode } from "@/components/MapComponents/DisplayModeDropdown";
 import ElevationProfileChart from "@/components/HikeComponents/ElevationProfileChart";
@@ -80,7 +78,7 @@ export default function HikeInfoCard({
           title={hike.name}
           onClick={() => setDisplayMode("full")}
         >
-          <IconMountain />
+          <Mountain size={18} strokeWidth={1.6} />
         </button>
       </div>
     );
@@ -97,7 +95,7 @@ export default function HikeInfoCard({
             onClick={() => setDisplayMode("full")}
             title="Expand"
           >
-            <IconExpand />
+            <Expand size={16} strokeWidth={1.6} />
           </button>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-semibold leading-tight truncate">{hike.name}</p>
@@ -220,11 +218,11 @@ export default function HikeInfoCard({
       {/* ── 5. Action row ─────────────────────────────────────────────────── */}
       <div className="px-5 py-4 border-t border-base-content/10 flex gap-2 shrink-0">
         <button className="btn bg-base-200 border-0 rounded-full flex-1 gap-2" disabled>
-          <IconDownload />
+          <Download size={16} strokeWidth={1.6} />
           Export
         </button>
         <button className="btn btn-primary rounded-full flex-1 gap-2" disabled>
-          <IconPlay />
+          <Play size={16} strokeWidth={1.6} />
           Replay
         </button>
       </div>

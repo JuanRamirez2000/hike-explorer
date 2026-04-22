@@ -4,11 +4,7 @@ import { useState } from "react";
 import type { ViewshedStatus, ViewshedProgress } from "@/types/viewshed";
 import type { MapStyle } from "@/types/map";
 import type { UnitSystem } from "@/lib/format";
-import {
-  IconMap, IconEye, IconLayers, IconRuler,
-  IconSun, IconMountain, IconTriangle, IconRefresh, IconPlay,
-  IconExpand,
-} from "@/components/icons";
+import { Map, Eye, Layers, Ruler, Sun, Mountain, TrendingUp, RefreshCw, Play, Expand } from "lucide-react";
 import DisplayModeDropdown, { type DisplayMode } from "@/components/MapComponents/DisplayModeDropdown";
 import { Medallion, MedallionRow } from "@/components/MapComponents/MapPanelPrimitives";
 import FogStatusBanner from "@/components/MapComponents/FogStatusBanner";
@@ -76,9 +72,9 @@ export default function MapControlsPanel({
   const [displayMode, setDisplayMode] = useState<DisplayMode>("full");
 
   const tabs = [
-    { id: "map" as const, label: "Map",  icon: <IconMap /> },
-    { id: "fog" as const, label: "Fog",  icon: <IconEye /> },
-    { id: "view" as const, label: "View", icon: <IconLayers /> },
+    { id: "map" as const, label: "Map",  icon: <Map size={18} strokeWidth={1.6} /> },
+    { id: "fog" as const, label: "Fog",  icon: <Eye size={18} strokeWidth={1.6} /> },
+    { id: "view" as const, label: "View", icon: <Layers size={18} strokeWidth={1.6} /> },
   ];
 
   // ── icon mode ───────────────────────────────────────────────────────────
@@ -91,7 +87,7 @@ export default function MapControlsPanel({
           title="Controls"
           onClick={() => setDisplayMode("full")}
         >
-          <IconLayers />
+          <Layers size={18} strokeWidth={1.6} />
         </button>
       </div>
     );
@@ -108,7 +104,7 @@ export default function MapControlsPanel({
             onClick={() => setDisplayMode("full")}
             title="Expand"
           >
-            <IconExpand />
+            <Expand size={16} strokeWidth={1.6} />
           </button>
           <p className="flex-1 text-[13px] font-semibold">Controls</p>
           <div className="flex items-center gap-1.5 text-base-content/50 shrink-0">
@@ -193,7 +189,7 @@ export default function MapControlsPanel({
 
             {/* Units row */}
             <MedallionRow
-              icon={<IconRuler />}
+              icon={<Ruler size={18} strokeWidth={1.6} />}
               title="Units"
               subtitle="Distance & elevation"
               trailing={
@@ -228,7 +224,7 @@ export default function MapControlsPanel({
 
             {/* Show overlay toggle */}
             <MedallionRow
-              icon={<IconEye />}
+              icon={<Eye size={18} strokeWidth={1.6} />}
               title="Show overlay"
               subtitle="Toggle fog on the map"
               trailing={
@@ -246,7 +242,7 @@ export default function MapControlsPanel({
             <div className="bg-base-200 rounded-2xl p-4 space-y-3">
               <div className="flex items-center gap-3">
                 <Medallion className="bg-base-100 border border-base-content/15">
-                  <IconSun />
+                  <Sun size={18} strokeWidth={1.6} />
                 </Medallion>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold leading-tight">Opacity</p>
@@ -270,7 +266,7 @@ export default function MapControlsPanel({
 
             {/* Render style toggle */}
             <MedallionRow
-              icon={<IconEye />}
+              icon={<Eye size={18} strokeWidth={1.6} />}
               title="Render style"
               subtitle="Grid cells or blended heatmap"
               trailing={
@@ -298,7 +294,7 @@ export default function MapControlsPanel({
               {viewshedStatus === "computing" ? (
                 <span className="loading loading-spinner loading-sm" />
               ) : (
-                <IconRefresh />
+                <RefreshCw size={16} strokeWidth={1.6} />
               )}
               {viewshedStatus === "computing"
                 ? "Computing…"
@@ -316,7 +312,7 @@ export default function MapControlsPanel({
 
             {/* 3D terrain toggle */}
             <MedallionRow
-              icon={<IconMountain />}
+              icon={<Mountain size={18} strokeWidth={1.6} />}
               title="3D terrain"
               subtitle="Render elevation mesh"
               trailing={
@@ -333,7 +329,7 @@ export default function MapControlsPanel({
             <div className="bg-base-200 rounded-2xl p-4 space-y-3">
               <div className="flex items-center gap-3">
                 <Medallion className="bg-base-100 border border-base-content/15">
-                  <IconTriangle />
+                  <TrendingUp size={18} strokeWidth={1.6} />
                 </Medallion>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-semibold leading-tight">Exaggeration</p>
@@ -358,7 +354,7 @@ export default function MapControlsPanel({
             {/* Flyover teaser */}
             <div className="bg-primary/10 rounded-2xl p-4 flex items-center gap-3">
               <Medallion className="bg-primary/25">
-                <span className="text-primary"><IconPlay /></span>
+                <span className="text-primary"><Play size={18} strokeWidth={1.6} /></span>
               </Medallion>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold text-primary leading-tight">Flyover mode</p>

@@ -1,14 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { IconPanelFull, IconPanelCompact, IconPanelIcon } from "@/components/icons";
+import { LayoutList, Rows2, Dot } from "lucide-react";
 
 export type DisplayMode = "full" | "compact" | "icon";
 
 const MODES: { id: DisplayMode; label: string; icon: React.ReactNode }[] = [
-  { id: "full",    label: "Full",    icon: <IconPanelFull /> },
-  { id: "compact", label: "Compact", icon: <IconPanelCompact /> },
-  { id: "icon",    label: "Icon",    icon: <IconPanelIcon /> },
+  { id: "full",    label: "Full",    icon: <LayoutList size={14} strokeWidth={1.6} /> },
+  { id: "compact", label: "Compact", icon: <Rows2 size={14} strokeWidth={1.6} /> },
+  { id: "icon",    label: "Icon",    icon: <Dot size={14} strokeWidth={1.6} /> },
 ];
 
 export default function DisplayModeDropdown({

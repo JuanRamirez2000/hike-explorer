@@ -1,4 +1,4 @@
-import { IconCheck, IconAlert, IconEllipsis } from "@/components/icons";
+import { Check, TriangleAlert, MoreHorizontal } from "lucide-react";
 import { Medallion } from "@/components/MapComponents/MapPanelPrimitives";
 import type { ViewshedStatus, ViewshedProgress } from "@/types/viewshed";
 
@@ -17,7 +17,7 @@ export default function FogStatusBanner({
     return (
       <div className="flex items-center gap-3 p-4 rounded-2xl bg-success/15">
         <Medallion className="bg-success/25">
-          <span className="text-success"><IconCheck /></span>
+          <span className="text-success"><Check size={18} strokeWidth={1.6} /></span>
         </Medallion>
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-semibold text-success leading-tight">Viewshed ready</p>
@@ -52,7 +52,7 @@ export default function FogStatusBanner({
     return (
       <div className="flex items-center gap-3 p-4 rounded-2xl bg-error/15">
         <Medallion className="bg-error/25">
-          <span className="text-error"><IconAlert /></span>
+          <span className="text-error"><TriangleAlert size={18} strokeWidth={1.6} /></span>
         </Medallion>
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-semibold text-error leading-tight">Viewshed failed</p>
@@ -65,7 +65,7 @@ export default function FogStatusBanner({
   return (
     <div className="flex items-center gap-3 p-4 rounded-2xl bg-base-200">
       <Medallion className="bg-base-100 border border-base-content/15">
-        <span className="text-base-content/50"><IconEllipsis /></span>
+        <span className="text-base-content/50"><MoreHorizontal size={18} strokeWidth={1.6} /></span>
       </Medallion>
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-semibold leading-tight">No viewshed yet</p>

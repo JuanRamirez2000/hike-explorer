@@ -41,7 +41,8 @@
       "Bash(xargs wc *)",
       "Bash(git worktree *)",
       "Bash(grep -E \"next\\\\.config|\\\\.ts$\")",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(pnpm run *)"
     ]
   }
 }
