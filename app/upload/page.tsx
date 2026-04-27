@@ -139,15 +139,15 @@ export default function UploadPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="font-semibold text-lg">Computed Stats</h2>
-                  <div className="join">
+                  <div className="flex bg-base-300 rounded-full p-0.5 gap-0.5">
                     <button
-                      className={`join-item btn btn-xs ${unit === "metric" ? "btn-neutral" : "btn-ghost"}`}
+                      className={`btn btn-xs rounded-full border-0 ${unit === "metric" ? "btn-primary" : "btn-ghost"}`}
                       onClick={() => setUnit("metric")}
                     >
                       km / m
                     </button>
                     <button
-                      className={`join-item btn btn-xs ${unit === "imperial" ? "btn-neutral" : "btn-ghost"}`}
+                      className={`btn btn-xs rounded-full border-0 ${unit === "imperial" ? "btn-primary" : "btn-ghost"}`}
                       onClick={() => setUnit("imperial")}
                     >
                       mi / ft

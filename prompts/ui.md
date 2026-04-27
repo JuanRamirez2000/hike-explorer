@@ -25,6 +25,7 @@ Every new component must match this language so the app stays coherent.
 - **Outer card corners**: `rounded-3xl` (24px). Always.
 - **Inner tonal surfaces / rows**: `rounded-2xl` (16px).
 - **Pills, toggles, buttons**: `rounded-full`.
+- **Medallion (icon holder in rows)**: `rounded-xl` (12px) soft square — not a circle.
 - **Never mix radii within the same container.** If a parent is `rounded-3xl`, children use
   either `rounded-2xl` or `rounded-full` — never `rounded-lg` or `rounded-md`.
 - No sharp (`rounded-none`) corners anywhere in UI chrome.
@@ -66,11 +67,13 @@ Every new component must match this language so the app stays coherent.
   Deferred/stubbed features use `primary/10` (the teaser pattern), not warning.
 - `base-100/200/300` — surface hierarchy. `base-content` for text.
 
-Theme direction: **earthy green primary + orange trail accent**. When I set up the DaisyUI
-theme, `primary` will be a forest/sage green and there'll be an orange accent for track
-lines on the map. Designs should assume this and not use blue or purple as the primary
-identity color. Blue, purple, coral, etc. are fine for encoding data categories or states,
-but they're not the brand.
+**Locked tokens (Trailview theme — do not invent alternatives):**
+- **Primary**: `#2F5233` Forest — fog-of-war brand + primary CTAs
+- **Accent / secondary**: `#E89B4A` Trail orange — GPX track rendering and track-color indicators only
+- **Success**: `#5E8C4A` Moss · **Error**: `#B8452E` Rust · **Info**: `#5C7B8A` Slate · **Warning**: `#C7923A` (all earth-tuned, not traditional semantic)
+- **Page**: `#FAF6EC` · **Card surface**: `#FFFDF6` · **Tonal surface**: `#F1ECDD` · **Border**: `#E4DEC9`
+- Designs must not use blue or purple as the primary identity color. Blue, purple, coral, etc. are fine for encoding data categories or states, but they're not the brand.
+- Semantic tint surfaces use `bg-*-soft` classes (e.g. `bg-success-soft`). Title text on tinted surfaces uses `text-*-dark` (e.g. `text-success-dark`).
 
 ### Icons
 - Inline SVG for now. I'll add an icon library later; designs should not block on it.
@@ -84,12 +87,12 @@ When a tonal surface row has a title + subtitle + trailing control (toggle, slid
 pill group, icon button), use this layout:
 
 ```
-[ 36×36 circle medallion ]  Title           [trailing control]
-  (bg-base-100, border,     Subtitle
-   rounded-full, icon)      (text-xs muted)
+[ 36×36 soft-square medallion ]  Title           [trailing control]
+  (bg-base-200, border-inner,    Subtitle
+   rounded-xl, icon)             (text-xs muted)
 ```
 
-Medallion: `w-9 h-9 rounded-full bg-base-100 border border-base-300 flex items-center
+Medallion: `w-9 h-9 rounded-xl bg-base-200 border border-border-inner flex items-center
 justify-center flex-shrink-0`. This is *the* identity element of the system — use it
 whenever a row has an icon.
 
@@ -106,7 +109,14 @@ whenever a row has an icon.
 
 ### Status banners / strips
 Full-width rounded-2xl tinted surface with medallion + title + subtitle. Use the medallion
-row pattern with a colored medallion (e.g. `bg-success/25` inside a `bg-success/15` row).
+row pattern with a colored medallion. Tinted banners use `bg-*-soft` (e.g. `bg-success-soft`)
+for the container and `text-*-dark` (e.g. `text-success-dark`) for the title text.
+
+### Status pills
+All status pills use the **outlined** style — never tinted fills:
+`inline-flex items-center gap-1.5 bg-base-200 border border-{semantic} text-{semantic}-dark px-2.5 py-0.5 rounded-full text-xs font-medium`
+
+Swap `{semantic}` for `success`, `info`, `error`, `warning`, or `primary` as appropriate.
 
 ### Thumbnails (for visual option pickers — basemap, color mode, etc.)
 - `aspect-square rounded-2xl` grid items.

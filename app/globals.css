@@ -1,5 +1,157 @@
 @import "tailwindcss";
+
 @plugin "daisyui" {
-  themes: pastel;
+  themes: trailview --default;
 }
+
 @plugin "@tailwindcss/typography";
+
+@plugin "daisyui/theme" {
+  name: "trailview";
+  default: true;
+  prefersdark: false;
+  color-scheme: "light";
+
+  /* Surfaces — DaisyUI convention: base-100 is page bg */
+  --color-base-100: #FAF6EC;    /* page */
+  --color-base-200: #FFFDF6;    /* floating card surface */
+  --color-base-300: #F1ECDD;    /* tonal inner surface */
+  --color-base-content: #2C2C2A;
+
+  /* Primary */
+  --color-primary: #2F5233;
+  --color-primary-content: #FFFDF6;
+
+  /* Secondary — use accent (trail orange) */
+  --color-secondary: #E89B4A;
+  --color-secondary-content: #2C2C2A;
+
+  /* Accent — unused slot; mirror secondary for any daisy components that reach for it */
+  --color-accent: #E89B4A;
+  --color-accent-content: #2C2C2A;
+
+  /* Neutral — dark earth, used for text-on-dark like buttons, etc */
+  --color-neutral: #2C2C2A;
+  --color-neutral-content: #FAF6EC;
+
+  /* Semantic */
+  --color-info: #5C7B8A;
+  --color-info-content: #FFFDF6;
+  --color-success: #5E8C4A;
+  --color-success-content: #FFFDF6;
+  --color-warning: #C7923A;
+  --color-warning-content: #2C2C2A;
+  --color-error: #B8452E;
+  --color-error-content: #FFFDF6;
+
+  /* Rounding */
+  --radius-selector: 999px;
+  --radius-field: 16px;
+  --radius-box: 24px;
+
+  /* Component sizing and noise */
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@theme {
+  /* Soft tint backgrounds: bg-primary-soft, bg-success-soft, etc. */
+  --color-primary-soft: rgba(47, 82, 51, 0.10);
+  --color-accent-soft: rgba(232, 155, 74, 0.15);
+  --color-success-soft: rgba(94, 140, 74, 0.18);
+  --color-info-soft: rgba(92, 123, 138, 0.18);
+  --color-error-soft: rgba(184, 69, 46, 0.15);
+  --color-warning-soft: rgba(199, 146, 58, 0.18);
+
+  /* Dark text variants on tints: text-primary-dark, text-success-dark, etc. */
+  --color-primary-dark: #1F3A22;
+  --color-accent-dark: #B47329;
+  --color-success-dark: #3E6030;
+  --color-info-dark: #3E5562;
+  --color-error-dark: #8A2D1C;
+  --color-warning-dark: #8A641D;
+
+  /* Custom border colors */
+  --color-border-card: rgba(44, 44, 42, 0.14);
+  --color-border-inner: rgba(44, 44, 42, 0.10);
+
+  /* Custom shadow */
+  --shadow-card: 0 1px 2px rgba(44, 44, 42, 0.04), 0 4px 10px rgba(44, 44, 42, 0.05);
+}
+
+/* Text tones + design-source aliases (used in SVG fill/stroke attrs and inline styles) */
+:root {
+  --color-text-muted: rgba(44, 44, 42, 0.65);
+  --color-text-dim:   rgba(44, 44, 42, 0.50);
+  /* Aliases matching the design handoff's styles.css — lets SVG attrs use var() verbatim */
+  --border-card:  var(--color-border-card);
+  --border-inner: var(--color-border-inner);
+  --cream:   var(--color-base-100);
+  --cream-2: var(--color-base-200);
+  --green:   var(--color-primary);
+  --ink:     var(--color-base-content);
+  --ink-65:  rgba(44, 44, 42, 0.65);
+  --ink-50:  rgba(44, 44, 42, 0.50);
+  --ink-30:  rgba(44, 44, 42, 0.30);
+  --ink-15:  rgba(44, 44, 42, 0.15);
+  --ink-08:  rgba(44, 44, 42, 0.08);
+}
+
+/* ── SVG illustration helpers ─────────────────────────────────────────────── */
+.topo-line            { fill: none; stroke: rgba(44,44,42,0.15); stroke-width: 1; }
+.topo-line.green      { stroke: var(--color-primary); opacity: 0.55; }
+.topo-line.green-strong { stroke: var(--color-primary); opacity: 1; stroke-width: 1.5; }
+
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+}
+
+.btn { font-weight: 500; }
+
+/* ── Chart tokens ────────────────────────────────────────────────────────── */
+/* Colors are derived from the trailview theme — update here, nowhere else.  */
+:root {
+  --chart-track:    var(--color-accent);      /* GPX track line — trail orange  */
+  --chart-fill:     var(--color-primary);     /* area fill base — forest green  */
+  --chart-pace:     var(--color-info);        /* pace line — slate               */
+  --chart-grid:     var(--color-base-content);
+  --chart-tooltip-bg:     var(--color-base-200);
+  --chart-tooltip-border: var(--color-border-card);
+  --chart-tooltip-text:   var(--color-base-content);
+}
+
+/* Recharts SVG text (axis ticks) */
+.recharts-text {
+  fill: var(--color-base-content);
+  fill-opacity: 0.5;
+}
+
+/* Recharts tooltip */
+.recharts-default-tooltip {
+  background-color: var(--chart-tooltip-bg) !important;
+  border: 1px solid var(--chart-tooltip-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--shadow-card) !important;
+  font-size: 11px !important;
+  color: var(--chart-tooltip-text) !important;
+  padding: 8px 12px !important;
+}
+
+.recharts-tooltip-label {
+  color: var(--chart-tooltip-text) !important;
+  opacity: 0.55 !important;
+  font-size: 10px !important;
+  margin-bottom: 2px !important;
+}
+
+.recharts-tooltip-item-list .recharts-tooltip-item {
+  color: var(--chart-tooltip-text) !important;
+  padding: 0 !important;
+}

@@ -99,9 +99,9 @@ export default function HikeCard({
   const minimapUrl = buildMinimapUrl(trackPoints, hike.bbox);
 
   return (
-    <div className="card bg-base-100 border border-base-300 shadow-sm overflow-hidden">
+    <div className="card bg-base-200 border border-border-card shadow-card overflow-hidden">
       {minimapUrl && !editing && (
-        <div className="relative w-full" style={{ height: 160 }}>
+        <div className="relative w-full" style={{ height: 200 }}>
           <Image
             src={minimapUrl}
             alt={`Map thumbnail for ${hike.name}`}
@@ -113,7 +113,7 @@ export default function HikeCard({
         </div>
       )}
 
-      <div className="card-body gap-3 p-5">
+      <div className="card-body gap-5 p-7">
         {editing ? (
           <EditHikeForm
             initialName={hike.name}
@@ -142,7 +142,7 @@ export default function HikeCard({
 
             {/* Hike name + subtitle */}
             <div>
-              <h2 className="card-title text-base leading-tight">{hike.name}</h2>
+              <h2 className="card-title text-lg tracking-tight font-medium leading-tight">{hike.name}</h2>
               <p className="text-sm text-base-content/50">
                 {hike.date ?? "No date"} · {hike.creator ?? "Unknown device"}
               </p>
@@ -151,24 +151,24 @@ export default function HikeCard({
             {/* 2×2 stat grid */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-xs text-base-content/50">Distance</p>
-                <p className="text-sm font-medium">
+                <p className="font-mono text-[10px] uppercase tracking-[0.04em] text-base-content/50">Distance</p>
+                <p className="text-base font-medium">
                   {hike.distance_km !== null ? fmtDistance(hike.distance_km, unit) : "—"}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-base-content/50">Elev. gain</p>
-                <p className="text-sm font-medium">
+                <p className="font-mono text-[10px] uppercase tracking-[0.04em] text-base-content/50">Elev. gain</p>
+                <p className="text-base font-medium">
                   {hike.elevation_gain_m !== null ? fmtElevation(hike.elevation_gain_m, unit) : "—"}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-base-content/50">Duration</p>
-                <p className="text-sm font-medium">{fmtDuration(hike.duration_seconds)}</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.04em] text-base-content/50">Duration</p>
+                <p className="text-base font-medium">{fmtDuration(hike.duration_seconds)}</p>
               </div>
               <div>
-                <p className="text-xs text-base-content/50">Avg pace</p>
-                <p className="text-sm font-medium">
+                <p className="font-mono text-[10px] uppercase tracking-[0.04em] text-base-content/50">Avg pace</p>
+                <p className="text-base font-medium">
                   {fmtAvgPace(hike.duration_seconds, hike.distance_km, unit)}
                 </p>
               </div>
@@ -179,15 +179,15 @@ export default function HikeCard({
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-base-content/50">Elevation</p>
-                  <div className="join">
+                  <div className="flex bg-base-300 rounded-full p-0.5 gap-0.5">
                     <button
-                      className={`join-item btn btn-xs ${unit === "metric" ? "btn-neutral" : "btn-ghost"}`}
+                      className={`btn btn-xs rounded-full border-0 ${unit === "metric" ? "btn-primary" : "btn-ghost"}`}
                       onClick={() => setUnit("metric")}
                     >
                       km
                     </button>
                     <button
-                      className={`join-item btn btn-xs ${unit === "imperial" ? "btn-neutral" : "btn-ghost"}`}
+                      className={`btn btn-xs rounded-full border-0 ${unit === "imperial" ? "btn-primary" : "btn-ghost"}`}
                       onClick={() => setUnit("imperial")}
                     >
                       mi
@@ -206,10 +206,10 @@ export default function HikeCard({
             {error && <p className="text-error text-sm">{error}</p>}
 
             {/* Action row */}
-            <div className="flex items-center gap-1 pt-1">
+            <div className="flex items-center gap-1 pt-4 border-t border-border-inner">
               <Link
                 href={`/hike/${hike.id}/map`}
-                className="btn btn-primary btn-sm flex-1"
+                className="btn btn-primary btn-sm rounded-full flex-1"
               >
                 Open map
               </Link>

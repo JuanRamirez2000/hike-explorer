@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ViewshedStatus, ViewshedProgress } from "@/types/viewshed";
 import type { MapStyle } from "@/types/map";
 import type { UnitSystem } from "@/lib/format";
-import { Map, Eye, Layers, Ruler, Sun, Mountain, TrendingUp, RefreshCw, Play, Expand } from "lucide-react";
+import { Map, Eye, EyeOff, Layers, Ruler, Sun, Mountain, TrendingUp, RefreshCw, Play, Expand, MapPin } from "lucide-react";
 import DisplayModeDropdown, { type DisplayMode } from "@/components/MapComponents/DisplayModeDropdown";
 import { Medallion, MedallionRow } from "@/components/MapComponents/MapPanelPrimitives";
 import FogStatusBanner from "@/components/MapComponents/FogStatusBanner";
@@ -45,6 +45,14 @@ export interface MapControlsPanelProps {
   onFogRenderStyleChange: (s: FogRenderStyle) => void;
   fogAreaKm2: number | null;
   fogObserverCount: number | null;
+
+  unexploredOpacity: number;
+  onUnexploredOpacityChange: (v: number) => void;
+
+  showDistMarkers: boolean;
+  onShowDistMarkersChange: (v: boolean) => void;
+  showPins: boolean;
+  onShowPinsChange: (v: boolean) => void;
 }
 
 export default function MapControlsPanel({
@@ -67,6 +75,12 @@ export default function MapControlsPanel({
   onFogRenderStyleChange,
   fogAreaKm2,
   fogObserverCount,
+  unexploredOpacity,
+  onUnexploredOpacityChange,
+  showDistMarkers,
+  onShowDistMarkersChange,
+  showPins,
+  onShowPinsChange,
 }: MapControlsPanelProps) {
   const [activeTab, setActiveTab] = useState<"map" | "fog" | "view">("fog");
   const [displayMode, setDisplayMode] = useState<DisplayMode>("full");
@@ -81,7 +95,7 @@ export default function MapControlsPanel({
 
   if (displayMode === "icon") {
     return (
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-[100px] right-4 z-10">
         <button
           className="w-11 h-11 rounded-2xl bg-base-100 border border-base-content/15 shadow-xl flex items-center justify-center text-base-content/70 hover:text-base-content transition-colors"
           title="Controls"
@@ -97,7 +111,7 @@ export default function MapControlsPanel({
 
   if (displayMode === "compact") {
     return (
-      <div className="absolute top-4 right-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-2xl w-[320px]">
+      <div className="absolute top-[100px] right-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-2xl w-[320px]">
         <div className="px-4 py-3 flex items-center gap-3">
           <button
             className="w-8 h-8 rounded-xl bg-base-200 flex items-center justify-center shrink-0 text-base-content/60 hover:text-base-content transition-colors"
@@ -121,7 +135,7 @@ export default function MapControlsPanel({
   // ── full mode ────────────────────────────────────────────────────────────
 
   return (
-    <div className="absolute top-4 right-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-3xl w-[320px] overflow-hidden">
+    <div className="absolute top-[100px] right-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-3xl w-[320px] overflow-hidden">
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="px-5 pt-4 pb-3 flex items-center justify-between">
@@ -207,6 +221,36 @@ export default function MapControlsPanel({
               }
             />
 
+            {/* Distance markers toggle */}
+            <MedallionRow
+              icon={<Ruler size={18} strokeWidth={1.6} />}
+              title="Distance markers"
+              subtitle="Interval labels along route"
+              trailing={
+                <input
+                  type="checkbox"
+                  className="toggle toggle-success toggle-sm shrink-0"
+                  checked={showDistMarkers}
+                  onChange={(e) => onShowDistMarkersChange(e.target.checked)}
+                />
+              }
+            />
+
+            {/* Route pin markers toggle */}
+            <MedallionRow
+              icon={<MapPin size={18} strokeWidth={1.6} />}
+              title="Route markers"
+              subtitle="Start, end, peak & low points"
+              trailing={
+                <input
+                  type="checkbox"
+                  className="toggle toggle-success toggle-sm shrink-0"
+                  checked={showPins}
+                  onChange={(e) => onShowPinsChange(e.target.checked)}
+                />
+              }
+            />
+
           </div>
         )}
 
@@ -259,6 +303,32 @@ export default function MapControlsPanel({
                 step={1}
                 value={Math.round(fogOpacity * 100)}
                 onChange={(e) => onFogOpacityChange(Number(e.target.value) / 100)}
+                className="range range-primary range-xs w-full"
+                disabled={viewshedStatus !== "done"}
+              />
+            </div>
+
+            {/* Unexplored fade */}
+            <div className="bg-base-200 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <Medallion className="bg-base-100 border border-base-content/15">
+                  <EyeOff size={18} strokeWidth={1.6} />
+                </Medallion>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold leading-tight">Hide unexplored</p>
+                  <p className="text-[11px] text-base-content/65 leading-tight mt-0.5">Fade map outside viewshed</p>
+                </div>
+                <span className="text-sm font-semibold tabular-nums shrink-0">
+                  {Math.round(unexploredOpacity * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={80}
+                step={1}
+                value={Math.round(unexploredOpacity * 100)}
+                onChange={(e) => onUnexploredOpacityChange(Number(e.target.value) / 100)}
                 className="range range-primary range-xs w-full"
                 disabled={viewshedStatus !== "done"}
               />
@@ -352,16 +422,16 @@ export default function MapControlsPanel({
             </div>
 
             {/* Flyover teaser */}
-            <div className="bg-primary/10 rounded-2xl p-4 flex items-center gap-3">
+            <div className="bg-primary-soft rounded-2xl p-4 flex items-center gap-3">
               <Medallion className="bg-primary/25">
-                <span className="text-primary"><Play size={18} strokeWidth={1.6} /></span>
+                <span className="text-primary-dark"><Play size={18} strokeWidth={1.6} /></span>
               </Medallion>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold text-primary leading-tight">Flyover mode</p>
-                <p className="text-[11px] text-primary/65 leading-tight mt-0.5">Coming soon · 3D camera path</p>
+                <p className="text-[13px] font-semibold text-primary-dark leading-tight">Flyover mode</p>
+                <p className="text-[11px] text-primary-dark/75 leading-tight mt-0.5">Coming soon · 3D camera path</p>
               </div>
               <button
-                className="btn btn-xs rounded-full border border-primary/50 text-primary opacity-70 cursor-not-allowed shrink-0"
+                className="btn btn-xs rounded-full border border-primary/50 text-primary-dark opacity-70 cursor-not-allowed shrink-0"
                 disabled
               >
                 Soon

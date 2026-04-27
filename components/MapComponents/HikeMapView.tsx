@@ -11,6 +11,8 @@ import {
   buildPins, buildElevationColors, buildPaceColors, buildDistanceMarkers,
   geojsonAreaKm2, PIN_COLORS,
 } from "@/lib/map-layers";
+import { buildUnexploredMask } from "@/lib/viewshed";
+import type { Feature, Polygon, MultiPolygon } from "geojson";
 import type { MapStyle, ColorMode } from "@/types/map";
 import { useViewshed } from "@/hooks/useViewshed";
 import HikeInfoCard from "./HikeInfoCard";
@@ -67,17 +69,23 @@ export default function HikeMapView({
   const [fogVisible, setFogVisible] = useState(true);
   const [fogOpacity, setFogOpacity] = useState(0.65);
   const [terrainEnabled, setTerrainEnabled] = useState(true);
+  const [unexploredOpacity, setUnexploredOpacity] = useState(0);
+  const [showDistMarkers, setShowDistMarkers] = useState(true);
+  const [showPins, setShowPins] = useState(true);
 
   const mapRef = useRef<MapRef>(null);
   const terrainExpRef = useRef(terrainExp);
   const fogVisibleRef = useRef(fogVisible);
   const fogOpacityRef = useRef(fogOpacity);
   const terrainEnabledRef = useRef(terrainEnabled);
+  const unexploredOpacityRef = useRef(unexploredOpacity);
+  const unexploredMaskRef = useRef<Feature<Polygon | MultiPolygon> | null>(null);
   useLayoutEffect(() => {
     terrainExpRef.current = terrainExp;
     fogVisibleRef.current = fogVisible;
     fogOpacityRef.current = fogOpacity;
     terrainEnabledRef.current = terrainEnabled;
+    unexploredOpacityRef.current = unexploredOpacity;
   });
 
   // ── viewshed ─────────────────────────────────────────────────────────────
@@ -92,6 +100,51 @@ export default function HikeMapView({
     handleComputeViewshed,
     syncViewshedLayer,
   } = useViewshed({ hike, trackPoints, mapRef, fogVisibleRef, fogOpacityRef });
+
+  // ── unexplored overlay ───────────────────────────────────────────────────
+
+  const syncUnexploredLayer = useCallback((map: ReturnType<MapRef["getMap"]>) => {
+    if (!map) return;
+    if (map.getLayer("unexplored-fill")) map.removeLayer("unexplored-fill");
+    if (map.getSource("unexplored"))     map.removeSource("unexplored");
+    if (!unexploredMaskRef.current) return;
+    map.addSource("unexplored", { type: "geojson", data: unexploredMaskRef.current as GeoJSON.GeoJSON });
+    map.addLayer({
+      id: "unexplored-fill",
+      type: "fill",
+      source: "unexplored",
+      paint: {
+        "fill-color": "#111111",
+        "fill-opacity": unexploredOpacityRef.current,
+      },
+    });
+  }, []);
+
+  // Compute the unexplored mask once the viewshed data is ready
+  useEffect(() => {
+    if (!viewshedData) return;
+    buildUnexploredMask(viewshedData).then((mask) => {
+      unexploredMaskRef.current = mask;
+      const map = mapRef.current?.getMap();
+      if (map?.isStyleLoaded()) syncUnexploredLayer(map);
+    });
+  }, [viewshedData, syncUnexploredLayer]);
+
+  // Live-update unexplored fill-opacity without rebuilding the layer
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map?.getLayer("unexplored-fill")) return;
+    map.setPaintProperty("unexplored-fill", "fill-opacity", unexploredOpacity);
+  }, [unexploredOpacity]);
+
+  // Cleanup unexplored layer on unmount
+  useEffect(() => () => {
+    const map = mapRef.current?.getMap();
+    if (map?.isStyleLoaded()) {
+      if (map.getLayer("unexplored-fill")) map.removeLayer("unexplored-fill");
+      if (map.getSource("unexplored"))     map.removeSource("unexplored");
+    }
+  }, []);
 
   // ── terrain helpers ──────────────────────────────────────────────────────
 
@@ -131,8 +184,9 @@ export default function HikeMapView({
       if (!m) return;
       setupTerrain(m);
       syncViewshedLayer(m);
+      syncUnexploredLayer(m);
     });
-  }, [setupTerrain, syncViewshedLayer]);
+  }, [setupTerrain, syncViewshedLayer, syncUnexploredLayer]);
 
   // Sync viewshed layer whenever data, visibility, or render mode changes
   useEffect(() => {
@@ -141,12 +195,15 @@ export default function HikeMapView({
     syncViewshedLayer(map);
   }, [viewshedData, viewshedVisible, viewshedSmooth, syncViewshedLayer]);
 
-  // Live-update fill-opacity without re-building the layer (efficient for slider)
+  // Live-update fill-opacity without re-building the layer (efficient for slider).
+  // When the unexplored overlay is active it provides the boundary contrast,
+  // so the blue viewshed fill is suppressed to avoid double-layering.
   useEffect(() => {
     const map = mapRef.current?.getMap();
     if (!map?.getLayer("viewshed-fill")) return;
-    map.setPaintProperty("viewshed-fill", "fill-opacity", fogVisible ? fogOpacity : 0);
-  }, [fogVisible, fogOpacity]);
+    const effective = unexploredOpacity > 0 ? 0 : (fogVisible ? fogOpacity : 0);
+    map.setPaintProperty("viewshed-fill", "fill-opacity", effective);
+  }, [fogVisible, fogOpacity, unexploredOpacity]);
 
   // Live-update terrain exaggeration / enabled without waiting for a style reload
   useEffect(() => {
@@ -194,7 +251,7 @@ export default function HikeMapView({
       }),
       new ScatterplotLayer({
         id: "dist-dots",
-        data: distMarkers,
+        data: showDistMarkers ? distMarkers : [],
         getPosition: (d) => [d.pt.lng, d.pt.lat, d.pt.elevation * te],
         getFillColor: [255, 255, 255],
         getLineColor: [80, 80, 80],
@@ -207,7 +264,7 @@ export default function HikeMapView({
       }),
       new TextLayer({
         id: "dist-labels",
-        data: distMarkers,
+        data: showDistMarkers ? distMarkers : [],
         getPosition: (d) => [d.pt.lng, d.pt.lat, d.pt.elevation * te],
         getText: (d) => d.label,
         getColor: [255, 255, 255],
@@ -222,7 +279,7 @@ export default function HikeMapView({
       }),
       new ScatterplotLayer({
         id: "pin-dots",
-        data: pins,
+        data: showPins ? pins : [],
         getPosition: (d) => [d.pt.lng, d.pt.lat, d.pt.elevation * te],
         getFillColor: (d) => PIN_COLORS[d.id],
         getLineColor: [255, 255, 255],
@@ -235,7 +292,7 @@ export default function HikeMapView({
       }),
       new TextLayer({
         id: "pin-labels",
-        data: pins,
+        data: showPins ? pins : [],
         getPosition: (d) => [d.pt.lng, d.pt.lat, d.pt.elevation * te],
         getText: (d) => d.label,
         getColor: [255, 255, 255],
@@ -249,7 +306,7 @@ export default function HikeMapView({
         updateTriggers: { getPosition: te },
       }),
     ];
-  }, [trackPoints, terrainExp, colorMode, elevationColors, paceColors, pins, distMarkers]);
+  }, [trackPoints, terrainExp, colorMode, elevationColors, paceColors, pins, distMarkers, showDistMarkers, showPins]);
 
   // ── derived values for child components ─────────────────────────────────
 
@@ -264,7 +321,7 @@ export default function HikeMapView({
   // ── render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "calc(100vh - 4rem)" }}>
+    <div style={{ position: "relative", width: "100%", height: "100vh" }}>
       <HikeInfoCard
         hike={hike}
         trackPoints={trackPoints}
@@ -293,6 +350,12 @@ export default function HikeMapView({
         onFogRenderStyleChange={(s) => setViewshedSmooth(s === "smooth")}
         fogAreaKm2={fogAreaKm2}
         fogObserverCount={fogObserverCount}
+        unexploredOpacity={unexploredOpacity}
+        onUnexploredOpacityChange={(v) => setUnexploredOpacity(Math.min(v, 0.8))}
+        showDistMarkers={showDistMarkers}
+        onShowDistMarkersChange={setShowDistMarkers}
+        showPins={showPins}
+        onShowPinsChange={setShowPins}
       />
 
       <DeckGL

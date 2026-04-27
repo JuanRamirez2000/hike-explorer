@@ -58,25 +58,28 @@ export default function ElevationProfileChart({
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
         <defs>
-          {/* gradient: red at top (high elevation) → blue at bottom (low) */}
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ef4444" stopOpacity={0.85} />
-            <stop offset="40%" stopColor="#eab308" stopOpacity={0.65} />
-            <stop offset="75%" stopColor="#22c55e" stopOpacity={0.45} />
-            <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.2} />
+            <stop offset="0%"   stopColor="#ef4444" stopOpacity={0.9} />
+            <stop offset="35%"  stopColor="#f97316" stopOpacity={0.75} />
+            <stop offset="65%"  stopColor="#84cc16" stopOpacity={0.55} />
+            <stop offset="100%" stopColor="#22c55e" stopOpacity={0.2} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.15} />
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke="var(--chart-grid)"
+          strokeOpacity={0.1}
+        />
         <XAxis
           dataKey="dist"
-          tick={{ fontSize: 9 }}
+          tick={{ fontSize: 9, fill: "var(--color-base-content)", fillOpacity: 0.5 }}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v) => `${v}${distUnit}`}
           height={18}
         />
         <YAxis
-          tick={{ fontSize: 9 }}
+          tick={{ fontSize: 9, fill: "var(--color-base-content)", fillOpacity: 0.5 }}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v) => `${v}${elevUnit}`}
@@ -86,12 +89,12 @@ export default function ElevationProfileChart({
         <Tooltip
           formatter={(v) => [`${v} ${elevUnit}`, "Elevation"]}
           labelFormatter={(l) => `${l} ${distUnit}`}
-          contentStyle={{ fontSize: 11 }}
+          cursor={{ stroke: "var(--color-base-content)", strokeOpacity: 0.15, strokeWidth: 1 }}
         />
         <Area
           type="monotone"
           dataKey="elev"
-          stroke="#f97316"
+          stroke="var(--chart-track)"
           strokeWidth={1.5}
           fill={`url(#${gradId})`}
           dot={false}

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hike Explorer",
-  description: "Explore your hikes",
+  title: "Trail View",
+  description: "A hiking atlas that starts blank. Walk to unfog it.",
 };
 
 export default function RootLayout({
@@ -27,7 +27,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      data-theme="pastel"
+      data-theme="trailview"
     >
       <body className="min-h-full flex flex-col">
         <Navbar />

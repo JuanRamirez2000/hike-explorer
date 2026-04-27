@@ -100,17 +100,21 @@ export default function PaceChart({ trackPoints, unit = "metric", height = 100 }
         data={data.points}
         margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
       >
-        <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.15} />
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke="var(--chart-grid)"
+          strokeOpacity={0.1}
+        />
         <XAxis
           dataKey="dist"
-          tick={{ fontSize: 9 }}
+          tick={{ fontSize: 9, fill: "var(--color-base-content)", fillOpacity: 0.5 }}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v) => `${v}${distUnit}`}
           height={18}
         />
         <YAxis
-          tick={{ fontSize: 9 }}
+          tick={{ fontSize: 9, fill: "var(--color-base-content)", fillOpacity: 0.5 }}
           tickLine={false}
           axisLine={false}
           tickFormatter={paceLabel}
@@ -120,18 +124,19 @@ export default function PaceChart({ trackPoints, unit = "metric", height = 100 }
         <Tooltip
           formatter={(v) => [paceLabel(v as number), "Pace"]}
           labelFormatter={(l) => `${l} ${distUnit}`}
-          contentStyle={{ fontSize: 11 }}
+          cursor={{ stroke: "var(--color-base-content)", strokeOpacity: 0.15, strokeWidth: 1 }}
         />
         <ReferenceLine
           y={data.avg}
-          stroke="#6b7280"
+          stroke="var(--color-base-content)"
+          strokeOpacity={0.3}
           strokeDasharray="4 4"
           strokeWidth={1}
         />
         <Line
           type="monotone"
           dataKey="pace"
-          stroke="#3b82f6"
+          stroke="var(--chart-pace)"
           strokeWidth={1.5}
           dot={false}
           connectNulls={false}

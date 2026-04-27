@@ -1,4 +1,7 @@
-import type { FeatureCollection, Feature, Polygon, Point } from "geojson";
+import type { FeatureCollection, Feature, Polygon, MultiPolygon, Point } from "geojson";
+import turfUnion from "@turf/union";
+import turfDifference from "@turf/difference";
+import bboxPolygon from "@turf/bbox-polygon";
 import type { TrackPointSummary } from "@/types/models";
 import { haversineM, metersToDegreeLat, metersToDegreeLng } from "@/lib/geo";
 import type {
@@ -201,6 +204,42 @@ export function buildPointGeoJSON(
   }
 
   return { type: "FeatureCollection", features } as FeatureCollection;
+}
+
+// Builds a world-covering polygon with the viewshed union punched out as a hole.
+// Used to render a dark "unexplored area" overlay outside the viewshed boundary.
+// Uses tree-reduction union (pairs → pairs-of-pairs) so intermediate polygons stay small.
+export async function buildUnexploredMask(
+  viewshedData: FeatureCollection,
+): Promise<Feature<Polygon | MultiPolygon> | null> {
+  if (viewshedData.features.length === 0) return null;
+
+  let current = [...viewshedData.features] as Feature<Polygon | MultiPolygon>[];
+
+  while (current.length > 1) {
+    const next: typeof current = [];
+    for (let i = 0; i < current.length; i += 2) {
+      if (i + 1 < current.length) {
+        const merged = turfUnion({
+          type: "FeatureCollection",
+          features: [current[i], current[i + 1]],
+        } as FeatureCollection<Polygon | MultiPolygon>);
+        if (merged) next.push(merged);
+      } else {
+        next.push(current[i]);
+      }
+    }
+    current = next;
+    await new Promise<void>((r) => setTimeout(r, 0));
+  }
+
+  if (current.length === 0) return null;
+
+  const world = bboxPolygon([-180, -85, 180, 85]);
+  return turfDifference({
+    type: "FeatureCollection",
+    features: [world, current[0] as Feature<Polygon | MultiPolygon>],
+  } as FeatureCollection<Polygon | MultiPolygon>);
 }
 
 // Derives point features from a cached polygon FeatureCollection (no cells Map available).

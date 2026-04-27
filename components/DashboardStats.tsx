@@ -15,22 +15,23 @@ export default function DashboardStats({ hikeCount, totalDistanceKm }: Props) {
   return (
     <div className="flex items-center justify-between">
       <div>
-        <h1 className="text-3xl font-bold">My Hikes</h1>
+        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-base-content/50 mb-1">Your atlas</p>
+        <h1 className="text-4xl font-medium tracking-tight leading-[1.05]">My Hikes</h1>
         {hikeCount > 0 && (
           <div className="flex items-center gap-2 mt-1">
             <p className="text-sm text-base-content/50">
               {hikeCount} hike{hikeCount !== 1 ? "s" : ""} &middot;{" "}
               {fmtDistance(totalDistanceKm, unit)} total
             </p>
-            <div className="join">
+            <div className="flex bg-base-300 rounded-full p-0.5 gap-0.5">
               <button
-                className={`join-item btn btn-xs ${unit === "metric" ? "btn-neutral" : "btn-ghost"}`}
+                className={`btn btn-xs rounded-full border-0 ${unit === "metric" ? "btn-primary" : "btn-ghost"}`}
                 onClick={() => setUnit("metric")}
               >
                 km
               </button>
               <button
-                className={`join-item btn btn-xs ${unit === "imperial" ? "btn-neutral" : "btn-ghost"}`}
+                className={`btn btn-xs rounded-full border-0 ${unit === "imperial" ? "btn-primary" : "btn-ghost"}`}
                 onClick={() => setUnit("imperial")}
               >
                 mi
@@ -39,7 +40,7 @@ export default function DashboardStats({ hikeCount, totalDistanceKm }: Props) {
           </div>
         )}
       </div>
-      <Link href="/upload" className="btn btn-primary btn-sm">
+      <Link href="/upload" className="btn btn-primary btn-sm rounded-full">
         + Upload Hike
       </Link>
     </div>

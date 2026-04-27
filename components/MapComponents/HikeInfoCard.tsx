@@ -72,7 +72,7 @@ export default function HikeInfoCard({
 
   if (displayMode === "icon") {
     return (
-      <div className="absolute top-4 left-4 z-10">
+      <div className="absolute top-[100px] left-4 z-10">
         <button
           className="w-11 h-11 rounded-2xl bg-base-100 border border-base-content/15 shadow-xl flex items-center justify-center text-base-content/70 hover:text-base-content transition-colors"
           title={hike.name}
@@ -88,7 +88,7 @@ export default function HikeInfoCard({
 
   if (displayMode === "compact") {
     return (
-      <div className="absolute top-4 left-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-2xl w-[340px]">
+      <div className="absolute top-[100px] left-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-2xl w-[340px]">
         <div className="px-4 py-3 flex items-center gap-3">
           <button
             className="w-8 h-8 rounded-xl bg-base-200 flex items-center justify-center shrink-0 text-base-content/60 hover:text-base-content transition-colors"
@@ -113,8 +113,8 @@ export default function HikeInfoCard({
 
   return (
     <div
-      className="absolute top-4 left-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-3xl w-[340px] flex flex-col"
-      style={{ maxHeight: "calc(100vh - 6rem)" }}
+      className="absolute top-[100px] left-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-3xl w-[340px] flex flex-col"
+      style={{ maxHeight: "calc(100vh - 116px)" }}
     >
       <div className="overflow-y-auto flex-1">
 
@@ -137,10 +137,10 @@ export default function HikeInfoCard({
             <div
               className={`rounded-full px-4 py-2.5 flex items-center gap-2.5 text-sm ${
                 fogStatus === "complete"
-                  ? "bg-success/15 text-success"
+                  ? "bg-success-soft text-success-dark"
                   : fogStatus === "error"
-                    ? "bg-error/15 text-error"
-                    : "bg-info/15 text-info"
+                    ? "bg-error-soft text-error-dark"
+                    : "bg-info-soft text-info-dark"
               }`}
             >
               {fogStatus === "processing" ? (

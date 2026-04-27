@@ -15,13 +15,13 @@ export default function FogStatusBanner({
 }) {
   if (viewshedStatus === "done") {
     return (
-      <div className="flex items-center gap-3 p-4 rounded-2xl bg-success/15">
+      <div className="flex items-center gap-3 p-4 rounded-2xl bg-success-soft">
         <Medallion className="bg-success/25">
-          <span className="text-success"><Check size={18} strokeWidth={1.6} /></span>
+          <span className="text-success-dark"><Check size={18} strokeWidth={1.6} /></span>
         </Medallion>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-success leading-tight">Viewshed ready</p>
-          <p className="text-[11px] text-success/75 leading-tight mt-0.5">
+          <p className="text-[13px] font-semibold text-success-dark leading-tight">Viewshed ready</p>
+          <p className="text-[11px] text-success-dark/75 leading-tight mt-0.5">
             {fogAreaKm2 !== null ? `${fogAreaKm2.toFixed(1)} km² visible` : "—"} ·{" "}
             {fogObserverCount ?? "—"} observers
           </p>
@@ -32,13 +32,13 @@ export default function FogStatusBanner({
 
   if (viewshedStatus === "computing") {
     return (
-      <div className="flex items-center gap-3 p-4 rounded-2xl bg-info/15">
+      <div className="flex items-center gap-3 p-4 rounded-2xl bg-info-soft">
         <Medallion className="bg-info/25">
-          <span className="loading loading-spinner loading-sm text-info" />
+          <span className="loading loading-spinner loading-sm text-info-dark" />
         </Medallion>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-info leading-tight">Computing viewshed…</p>
-          <p className="text-[11px] text-info/75 leading-tight mt-0.5">
+          <p className="text-[13px] font-semibold text-info-dark leading-tight">Computing viewshed…</p>
+          <p className="text-[11px] text-info-dark/75 leading-tight mt-0.5">
             {viewshedProgress
               ? `${viewshedProgress.processed}/${viewshedProgress.total} observers`
               : "Starting…"}
@@ -50,13 +50,13 @@ export default function FogStatusBanner({
 
   if (viewshedStatus === "error") {
     return (
-      <div className="flex items-center gap-3 p-4 rounded-2xl bg-error/15">
+      <div className="flex items-center gap-3 p-4 rounded-2xl bg-error-soft">
         <Medallion className="bg-error/25">
-          <span className="text-error"><TriangleAlert size={18} strokeWidth={1.6} /></span>
+          <span className="text-error-dark"><TriangleAlert size={18} strokeWidth={1.6} /></span>
         </Medallion>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-error leading-tight">Viewshed failed</p>
-          <p className="text-[11px] text-error/75 leading-tight mt-0.5">Tap recompute to retry</p>
+          <p className="text-[13px] font-semibold text-error-dark leading-tight">Viewshed failed</p>
+          <p className="text-[11px] text-error-dark/75 leading-tight mt-0.5">Tap recompute to retry</p>
         </div>
       </div>
     );

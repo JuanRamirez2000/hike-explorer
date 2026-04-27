@@ -42,7 +42,9 @@
       "Bash(git worktree *)",
       "Bash(grep -E \"next\\\\.config|\\\\.ts$\")",
       "Bash(xargs grep *)",
-      "Bash(pnpm run *)"
+      "Bash(pnpm run *)",
+      "Read(//c/Users/juanp/Downloads/Trail View/**)",
+      "Bash(npm cache *)"
     ]
   }
 }
