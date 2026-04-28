@@ -321,7 +321,7 @@ export default function HikeMapView({
   // ── render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100vh" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1 }}>
       <HikeInfoCard
         hike={hike}
         trackPoints={trackPoints}

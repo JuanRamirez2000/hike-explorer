@@ -30,6 +30,7 @@ export async function fireViewshed(hikeId: string, accessToken: string): Promise
 export async function triggerViewshed(
   hikeId: string,
 ): Promise<{ success: boolean; error?: string }> {
+  if (!UUID_RE.test(hikeId)) return { success: false, error: "Invalid hike ID" };
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Not authenticated" };
   const cookieStore = await cookies();
@@ -53,10 +54,14 @@ export async function triggerViewshed(
   return { success: true };
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function saveViewshed(
   hikeId: string,
   geojson: FeatureCollection,
 ): Promise<{ success: boolean; error?: string }> {
+  if (!UUID_RE.test(hikeId)) return { success: false, error: "Invalid hike ID" };
   const user = await getCurrentUser();
   if (!user) return { success: false, error: "Not authenticated" };
 

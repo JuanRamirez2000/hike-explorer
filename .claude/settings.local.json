@@ -44,7 +44,8 @@
       "Bash(xargs grep *)",
       "Bash(pnpm run *)",
       "Read(//c/Users/juanp/Downloads/Trail View/**)",
-      "Bash(npm cache *)"
+      "Bash(npm cache *)",
+      "Bash(node -e ' *)"
     ]
   }
 }

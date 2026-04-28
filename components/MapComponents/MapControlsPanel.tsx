@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ViewshedStatus, ViewshedProgress } from "@/types/viewshed";
 import type { MapStyle } from "@/types/map";
 import type { UnitSystem } from "@/lib/format";
@@ -85,6 +85,10 @@ export default function MapControlsPanel({
   const [activeTab, setActiveTab] = useState<"map" | "fog" | "view">("fog");
   const [displayMode, setDisplayMode] = useState<DisplayMode>("full");
 
+  useEffect(() => {
+    if (window.innerWidth < 1024) setDisplayMode("icon");
+  }, []);
+
   const tabs = [
     { id: "map" as const, label: "Map",  icon: <Map size={18} strokeWidth={1.6} /> },
     { id: "fog" as const, label: "Fog",  icon: <Eye size={18} strokeWidth={1.6} /> },
@@ -111,7 +115,7 @@ export default function MapControlsPanel({
 
   if (displayMode === "compact") {
     return (
-      <div className="absolute top-[100px] right-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-2xl w-[320px]">
+      <div className="absolute top-[100px] right-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-2xl w-[320px] max-w-[calc(100vw-2rem)]">
         <div className="px-4 py-3 flex items-center gap-3">
           <button
             className="w-8 h-8 rounded-xl bg-base-200 flex items-center justify-center shrink-0 text-base-content/60 hover:text-base-content transition-colors"
@@ -135,7 +139,7 @@ export default function MapControlsPanel({
   // ── full mode ────────────────────────────────────────────────────────────
 
   return (
-    <div className="absolute top-[100px] right-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-3xl w-[320px] overflow-hidden">
+    <div className="absolute top-[100px] right-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-3xl w-[320px] max-w-[calc(100vw-2rem)] overflow-hidden">
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="px-5 pt-4 pb-3 flex items-center justify-between">

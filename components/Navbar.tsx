@@ -11,8 +11,8 @@ export default async function Navbar() {
   const { data: { user } } = await supabase.auth.getUser();
 
   return (
-    <div className="sticky top-0 z-50 bg-base-100 px-6 pt-5 pb-2">
-      <nav className="navbar bg-base-200 border border-border-card rounded-2xl px-4 py-2 shadow-card">
+    <div className="fixed top-0 left-0 right-0 z-50 px-6 pt-5 pb-2 pointer-events-none">
+      <nav className="navbar bg-base-200 border border-border-card rounded-2xl px-4 py-2 shadow-card pointer-events-auto">
         <div className="flex-1 flex items-center gap-3">
           <Link href="/" className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-primary-content shrink-0">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { fmtDistance, fmtDuration, fmtElevation, fmtAvgPace, type UnitSystem } from "@/lib/format";
 import { Download, Play, Expand, Mountain } from "lucide-react";
 import type { Hike, TrackPointSummary, FogStatus } from "@/types/models";
@@ -55,6 +55,10 @@ export default function HikeInfoCard({
 }) {
   const [chartMode, setChartMode] = useState<"elevation" | "pace" | "grade">("elevation");
   const [displayMode, setDisplayMode] = useState<DisplayMode>("full");
+
+  useEffect(() => {
+    if (window.innerWidth < 1024) setDisplayMode("icon");
+  }, []);
   const hasPace = trackPoints.some((p) => p.timestamp);
 
   const maxElev = trackPoints.length > 0 ? Math.max(...trackPoints.map((p) => p.elevation)) : null;
@@ -88,7 +92,7 @@ export default function HikeInfoCard({
 
   if (displayMode === "compact") {
     return (
-      <div className="absolute top-[100px] left-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-2xl w-[340px]">
+      <div className="absolute top-[100px] left-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-2xl w-[340px] max-w-[calc(100vw-2rem)]">
         <div className="px-4 py-3 flex items-center gap-3">
           <button
             className="w-8 h-8 rounded-xl bg-base-200 flex items-center justify-center shrink-0 text-base-content/60 hover:text-base-content transition-colors"
@@ -113,7 +117,7 @@ export default function HikeInfoCard({
 
   return (
     <div
-      className="absolute top-[100px] left-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-3xl w-[340px] flex flex-col"
+      className="absolute top-[100px] left-4 z-10 bg-base-100 border border-base-content/15 shadow-xl rounded-3xl w-[340px] max-w-[calc(100vw-2rem)] flex flex-col"
       style={{ maxHeight: "calc(100vh - 116px)" }}
     >
       <div className="overflow-y-auto flex-1">

@@ -44,7 +44,7 @@ function HeroSection({ isAuthed }: { isAuthed: boolean }) {
       <HeroBackground />
 
       {/* Foreground: headline + CTAs */}
-      <div style={{ position: "absolute", left: 80, top: 100, width: 580, zIndex: 5 }}>
+      <div className="absolute z-[5] left-5 right-5 top-10 lg:left-20 lg:right-auto lg:top-[100px] lg:w-[580px]">
         <div className="badge rounded-full bg-base-200 border border-border-card py-3 px-3 mb-7 gap-2">
           <span style={{ width: 6, height: 6, borderRadius: 999, background: "var(--green)", display: "inline-block" }} />
           <span className="text-[12px] opacity-70">Now in early access</span>
@@ -59,7 +59,7 @@ function HeroSection({ isAuthed }: { isAuthed: boolean }) {
           Trail View is a hiking atlas that starts blank. The terrain you could see from your feet — only that — gets etched in. Everything else is a rumor.
         </p>
 
-        <div className="flex gap-3 mt-9">
+        <div className="flex flex-wrap gap-3 mt-9">
           {isAuthed ? (
             <Link href="/upload" className="btn btn-primary rounded-full px-6 h-12 text-[15px] font-medium gap-2">
               Upload your first hike <ArrowRight size={14} />
@@ -71,14 +71,14 @@ function HeroSection({ isAuthed }: { isAuthed: boolean }) {
               </button>
             </form>
           )}
-          <button className="btn btn-ghost rounded-full px-5 h-12 border border-border-card font-medium" disabled>
+          <Link href="/demo" className="btn btn-ghost rounded-full px-5 h-12 border border-border-card font-medium">
             Sample atlas
-          </button>
+          </Link>
         </div>
       </div>
 
-      {/* Reveal boundary annotation */}
-      <div style={{ position: "absolute", left: 480, top: 110, zIndex: 5 }}>
+      {/* Reveal boundary annotation — desktop only */}
+      <div className="hidden lg:block absolute z-[5]" style={{ left: 480, top: 110 }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
           <div style={{ width: 1, height: 60, background: "var(--green)", marginTop: 6 }} />
           <div>
@@ -89,8 +89,8 @@ function HeroSection({ isAuthed }: { isAuthed: boolean }) {
       </div>
 
       {/* Bottom legend bar */}
-      <div style={{ position: "absolute", left: 80, right: 80, bottom: 32, display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 5 }}>
-        <div style={{ display: "flex", gap: 8 }}>
+      <div className="absolute z-[5] left-4 right-4 bottom-8 lg:left-20 lg:right-20 flex items-center justify-between gap-y-2 flex-wrap">
+        <div className="flex flex-wrap gap-2">
           <div className="rounded-2xl border border-border-inner bg-base-200 px-4 py-2.5 flex items-center gap-2.5">
             <div style={{ width: 18, height: 10, borderRadius: 2, background: "var(--cream-2)", border: "1px solid var(--border-inner)" }} />
             <span className="font-mono text-[11px] opacity-80">Visible terrain</span>
@@ -104,7 +104,7 @@ function HeroSection({ isAuthed }: { isAuthed: boolean }) {
             <span className="font-mono text-[11px] opacity-80">Trail</span>
           </div>
         </div>
-        <span className="font-mono text-[11px] uppercase tracking-[0.08em] opacity-55">↓ scroll</span>
+        <span className="hidden sm:inline font-mono text-[11px] uppercase tracking-[0.08em] opacity-55">↓ scroll</span>
       </div>
     </div>
   );
@@ -124,9 +124,9 @@ function FeaturesF3() {
             One map gets bigger every time you lace up.
           </h2>
         </div>
-        <button className="btn btn-ghost rounded-full border border-border-card font-medium text-sm shrink-0 self-start lg:self-auto" disabled>
+        <Link href="/demo" className="btn btn-ghost rounded-full border border-border-card font-medium text-sm shrink-0 self-start lg:self-auto">
           See a sample atlas →
-        </button>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -155,8 +155,8 @@ function FeaturesF3() {
         {/* Stacked small cards */}
         <div className="lg:col-span-5 flex flex-col gap-6">
           {small.map((f) => (
-            <div key={f.n} className="bg-base-200 border border-border-card rounded-3xl shadow-card overflow-hidden flex-1 grid grid-cols-2">
-              <div className="border-r border-border-inner bg-base-100">
+            <div key={f.n} className="bg-base-200 border border-border-card rounded-3xl shadow-card overflow-hidden grid grid-cols-1 sm:grid-cols-2 lg:flex-1">
+              <div className="border-b sm:border-b-0 sm:border-r border-border-inner bg-base-100 min-h-[180px] sm:min-h-0">
                 <Illus kind={f.illus} />
               </div>
               <div className="p-5 lg:p-6 flex flex-col justify-center">
@@ -218,13 +218,13 @@ function FooterSection() {
         </div>
 
         {/* Giant wordmark */}
-        <div className="flex items-end gap-6 mb-2">
-          <div className="w-20 h-20 rounded-3xl bg-primary flex items-center justify-center text-primary-content shrink-0">
+        <div className="flex flex-col items-start gap-4 mb-2 lg:flex-row lg:items-end lg:gap-6">
+          <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-3xl bg-primary flex items-center justify-center text-primary-content shrink-0">
             <TrailviewMark size={56} />
           </div>
           <h2
             className="font-medium text-base-content"
-            style={{ fontSize: "clamp(80px, 18vw, 280px)", letterSpacing: "-0.04em", lineHeight: 0.85 }}
+            style={{ fontSize: "clamp(56px, 18vw, 280px)", letterSpacing: "-0.04em", lineHeight: 0.85 }}
           >
             Trail<span className="text-primary">View</span>
           </h2>
